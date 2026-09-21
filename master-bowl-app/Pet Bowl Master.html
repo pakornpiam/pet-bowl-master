@@ -1,0 +1,2537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0">
+<title>Pet Bowl Master</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#EFF1EC; --panel:#FFFFFF; --sunk:#E2E7DF; --well:#20272A;
+  --ink:#171C1A; --dim:#5E6862; --faint:#8B948D; --line:#D3D9D1;
+  --accent:#0E6B72; --accent-ink:#FFFFFF; --accent-soft:#D9EDEE;
+  --ok:#2F6B3C; --warn:#8E5C10; --crit:#9E3324;
+  --body-mat:#E9E7E1; --tray-mat:#3A4346; --steel:#B9C0C2; --name-mat:#0E6B72;
+  --inlay-mat:#C2562F;
+  --r:10px; --shadow:0 1px 2px rgba(20,30,26,.06),0 6px 20px rgba(20,30,26,.05);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#111614; --panel:#1A201D; --sunk:#141A18; --well:#0C1012;
+  --ink:#E7ECE6; --dim:#95A199; --faint:#6C7871; --line:#2A322E;
+  --accent:#54C3CB; --accent-ink:#08211F; --accent-soft:#113033;
+  --ok:#63B074; --warn:#D39A3B; --crit:#E0705E;
+  --body-mat:#D8D6D0; --tray-mat:#2B3336; --steel:#9AA3A6; --name-mat:#54C3CB;
+  --inlay-mat:#F08A5D;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+}}
+:root[data-theme="dark"]{
+  --bg:#111614; --panel:#1A201D; --sunk:#141A18; --well:#0C1012;
+  --ink:#E7ECE6; --dim:#95A199; --faint:#6C7871; --line:#2A322E;
+  --accent:#54C3CB; --accent-ink:#08211F; --accent-soft:#113033;
+  --ok:#63B074; --warn:#D39A3B; --crit:#E0705E;
+  --body-mat:#D8D6D0; --tray-mat:#2B3336; --steel:#9AA3A6; --name-mat:#54C3CB;
+  --inlay-mat:#F08A5D;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"IBM Plex Sans Thai","Noto Sans Thai",system-ui,sans-serif;
+  font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0; font-family:"Kanit","IBM Plex Sans Thai",sans-serif; text-wrap:balance}
+button,input,select{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+
+/* ---------- shell ---------- */
+.app{min-height:100dvh; display:flex; flex-direction:column; padding-inline:16px; padding-block:0}
+.bar{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding-block:14px 12px; border-bottom:1px solid var(--line);
+}
+.mark{display:flex; align-items:center; gap:10px; margin-right:auto}
+.mark svg{display:block; flex:none}
+.mark h1{font-size:19px; font-weight:600; letter-spacing:-.015em; line-height:1.1}
+.mark p{margin:1px 0 0; font-size:11.5px; color:var(--dim); letter-spacing:.01em}
+.seg{display:flex; background:var(--sunk); border-radius:8px; padding:3px; gap:2px}
+.seg button{
+  border:0; background:transparent; padding:5px 11px; border-radius:6px; cursor:pointer;
+  font-size:12.5px; font-weight:500; color:var(--dim);
+}
+.seg button[aria-pressed="true"]{background:var(--panel); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.save{
+  border:0; background:var(--accent); color:var(--accent-ink); font-weight:600;
+  padding:9px 16px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:8px;
+}
+.save:hover{filter:brightness(1.07)}
+.save:disabled{opacity:.5; cursor:default}
+
+.work{display:grid; grid-template-columns:minmax(0,1fr) 344px; gap:16px; padding-block:16px; flex:1; min-height:0}
+.spec{flex:none}
+@media (min-width:881px){
+  .app{height:100dvh; overflow:hidden}
+  .rail{overflow-y:auto; overscroll-behavior:contain; padding-right:5px; margin-right:-5px}
+  .stage{min-height:0}
+}
+
+/* ---------- viewport ---------- */
+.stage{position:relative; background:var(--well); border-radius:var(--r); overflow:hidden; min-height:420px}
+#gl{display:block; width:100%; height:100%; position:absolute; inset:0; touch-action:none; cursor:grab}
+#gl:active{cursor:grabbing}
+#gl.on-decal{cursor:move}
+#gl.grabbing, #gl.grabbing:active{cursor:grabbing}
+.stage-top{position:absolute; top:12px; right:12px; left:12px; display:flex; gap:8px; justify-content:space-between; pointer-events:none}
+.stage-top>*{pointer-events:auto}
+.chipset{display:flex; gap:4px; background:rgba(12,16,18,.72); backdrop-filter:blur(8px); border-radius:8px; padding:3px}
+.chipset button{
+  border:0; background:transparent; color:#9FB0AC; padding:5px 10px; border-radius:6px;
+  font-size:12px; cursor:pointer; font-weight:500;
+}
+.chipset button[aria-pressed="true"]{background:rgba(255,255,255,.14); color:#F2F6F4}
+.readout{
+  position:absolute; left:12px; bottom:12px; right:12px;
+  display:flex; gap:6px; flex-wrap:wrap; pointer-events:none;
+}
+.stat{
+  background:rgba(12,16,18,.72); backdrop-filter:blur(8px); border-radius:8px;
+  padding:7px 11px; min-width:0;
+}
+.stat b{display:block; font-size:9.5px; letter-spacing:.09em; text-transform:uppercase; color:#8C9C98; font-weight:600}
+.stat span{font-family:"IBM Plex Mono",monospace; font-size:14px; color:#F2F6F4; font-variant-numeric:tabular-nums}
+.stat span em{font-style:normal; font-size:10.5px; color:#8C9C98; margin-left:2px}
+.stat.flag-ok span{color:#8BD79C} .stat.flag-warn span{color:#F0C070} .stat.flag-crit span{color:#F09384}
+.spin{position:absolute; inset:0; display:grid; place-items:center; color:#7E8E8A; font-size:12px; pointer-events:none; opacity:0; transition:opacity .15s}
+.spin.on{opacity:1}
+
+/* ---------- control rail ---------- */
+.rail{display:flex; flex-direction:column; gap:10px; min-width:0}
+.group{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:13px 14px 15px}
+.group>h2{
+  font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--dim); margin-bottom:11px; display:flex; justify-content:space-between; align-items:baseline;
+}
+.group>h2 span{font-family:"IBM Plex Mono",monospace; letter-spacing:0; text-transform:none; color:var(--faint); font-weight:400}
+.field{display:grid; gap:5px; margin-bottom:12px}
+.field:last-child{margin-bottom:0}
+.field label{display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:12.5px; color:var(--dim)}
+.field label b{font-weight:500; color:var(--ink)}
+.field label .val{font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--ink); font-variant-numeric:tabular-nums}
+input[type=range]{
+  -webkit-appearance:none; appearance:none; width:100%; height:22px; background:transparent; margin:0; cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:var(--sunk)}
+input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:var(--sunk)}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:16px; height:16px; margin-top:-6px; border-radius:50%;
+  background:var(--accent); border:2px solid var(--panel); box-shadow:0 1px 3px rgba(0,0,0,.25);
+}
+input[type=range]::-moz-range-thumb{
+  width:16px; height:16px; border-radius:50%; background:var(--accent);
+  border:2px solid var(--panel); box-shadow:0 1px 3px rgba(0,0,0,.25);
+}
+input[type=text]{
+  width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:8px;
+  background:var(--bg); font-size:15px;
+}
+select{
+  width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg);
+  font-size:13px;
+}
+.pills{display:flex; flex-wrap:wrap; gap:6px}
+.pills button{
+  border:1px solid var(--line); background:var(--bg); color:var(--dim); padding:6px 11px;
+  border-radius:999px; font-size:12.5px; cursor:pointer;
+}
+.pills button[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent); color:var(--accent); font-weight:600}
+.switch{display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:13px}
+.switch input{width:38px; height:22px; appearance:none; background:var(--sunk); border-radius:999px; position:relative; cursor:pointer; transition:background .15s; flex:none}
+.switch input::after{content:""; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:var(--panel); transition:transform .15s; box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.switch input:checked{background:var(--accent)}
+.switch input:checked::after{transform:translateX(16px)}
+.note{font-size:11.5px; color:var(--faint); line-height:1.45; margin-top:9px}
+.note b{color:var(--dim); font-weight:500}
+/* .drop and .dfile set display, so the plain [hidden] default loses to them */
+[hidden]{display:none !important}
+.drop{
+  display:flex; align-items:center; justify-content:center; gap:7px; text-align:center;
+  padding:15px 10px; border:1.5px dashed var(--line); border-radius:9px;
+  background:var(--sunk); color:var(--faint); font-size:11.5px; cursor:pointer;
+  transition:border-color .12s, color .12s
+}
+.drop:hover,.drop.over,.drop:focus-visible{border-color:var(--accent); color:var(--accent); outline:none}
+.drop svg{flex:none}
+.dfile{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.dfile span{
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--dim)
+}
+.dfile button{
+  flex:none; border:1px solid var(--line); background:var(--panel); color:var(--dim);
+  border-radius:7px; padding:4px 9px; font:inherit; font-size:11px; cursor:pointer
+}
+.dfile button:hover{border-color:var(--accent); color:var(--accent)}
+
+.alerts{display:grid; gap:6px}
+.alert{
+  display:flex; gap:9px; padding:9px 11px; border-radius:8px; font-size:12.5px; line-height:1.45;
+  background:var(--accent-soft); border-left:3px solid var(--accent);
+}
+.alert.ok{background:color-mix(in srgb,var(--ok) 12%,var(--panel)); border-left-color:var(--ok); color:var(--ink)}
+.alert.warn{background:var(--panel); border-left-color:var(--warn); color:var(--warn)}
+.alert.warn{background:color-mix(in srgb,var(--warn) 12%,var(--panel)); color:var(--ink)}
+.alert.crit{background:var(--panel); border-left-color:var(--crit); color:var(--crit)}
+.alert.crit{background:color-mix(in srgb,var(--crit) 13%,var(--panel)); color:var(--ink)}
+.alert svg{flex:none; margin-top:2px}
+
+/* ---------- spec strip ---------- */
+.spec{
+  border-top:1px solid var(--line); padding-block:12px 20px;
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); gap:12px 22px;
+}
+.spec div{display:grid; gap:2px; min-width:0}
+.spec dt{font-size:10px; letter-spacing:.09em; text-transform:uppercase; color:var(--faint); font-weight:600}
+.spec dd{margin:0; font-family:"IBM Plex Mono",monospace; font-size:13px; font-variant-numeric:tabular-nums}
+.spec dd small{font-family:"IBM Plex Sans Thai",sans-serif; color:var(--dim); font-size:11.5px}
+
+@media (max-width:880px){
+  .work{grid-template-columns:1fr}
+  .stage{min-height:0; height:46vh}
+  .mark h1{font-size:17px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="mark">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+        <path d="M3 23 Q17 19 31 23 L31 26 Q17 30 3 26 Z" fill="var(--accent)" opacity=".28"/>
+        <path d="M6 12 Q6 9 9 9 L25 9 Q28 9 28 12 L28 13 Q28 22 17 22 Q6 22 6 13 Z"
+              fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>
+        <ellipse cx="17" cy="10.5" rx="9" ry="2.6" fill="none" stroke="var(--ink)" stroke-width="2"/>
+        <circle cx="17" cy="26.5" r="1.6" fill="var(--accent)"/>
+      </svg>
+      <div>
+        <h1 id="ttl">Pet Bowl Master</h1>
+        <p id="sub">Parametric ant-proof bowl holder &middot; STL generator</p>
+      </div>
+    </div>
+    <div class="seg" role="group" aria-label="Language">
+      <button id="lang-en" aria-pressed="true">EN</button>
+      <button id="lang-th" aria-pressed="false">ไทย</button>
+    </div>
+    <button class="save" id="save">
+      <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 1.8v8.4M4.6 7l3.4 3.4L11.4 7M2 12.5v1.7h12v-1.7"/>
+      </svg>
+      <span id="save-t">Download STL set</span>
+    </button>
+  </header>
+
+  <div class="work">
+    <section class="stage">
+      <canvas id="gl"></canvas>
+      <div class="stage-top">
+        <div class="chipset" role="group" aria-label="View">
+          <button id="v-all" aria-pressed="true">Assembly</button>
+          <button id="v-body" aria-pressed="false">Holder</button>
+          <button id="v-tray" aria-pressed="false">Tray</button>
+        </div>
+        <div class="chipset">
+          <button id="v-bowl" aria-pressed="true">Bowl</button>
+          <button id="v-water" aria-pressed="true">Water</button>
+        </div>
+      </div>
+      <div class="spin" id="spin">building…</div>
+      <div class="readout" id="readout"></div>
+    </section>
+
+    <aside class="rail">
+      <div class="group">
+        <h2><span id="g-preset-t">Preset</span></h2>
+        <div class="pills" id="presets"></div>
+      </div>
+
+      <div class="group">
+        <h2><span id="g-bowl-t">Stainless bowl</span><span class="mono">mm</span></h2>
+        <div class="field">
+          <label for="bowlD"><b id="l-bowlD">Rim diameter</b><span class="val mono" id="o-bowlD"></span></label>
+          <input type="range" id="bowlD" min="90" max="200" step="2">
+        </div>
+        <div class="field">
+          <label for="bowlDepth"><b id="l-bowlDepth">Bowl depth</b><span class="val mono" id="o-bowlDepth"></span></label>
+          <input type="range" id="bowlDepth" min="28" max="75" step="1">
+        </div>
+        <p class="note" id="n-bowl">Measure the <b>outside of the rim</b>. The bowl drops in and lands on its own flank, so a few millimetres out just seats it slightly higher.</p>
+      </div>
+
+      <div class="group">
+        <h2><span id="g-holder-t">Holder</span><span class="mono">mm</span></h2>
+        <div class="field">
+          <label for="holderW"><b id="l-holderW">Outer width</b><span class="val mono" id="o-holderW"></span></label>
+          <input type="range" id="holderW" min="110" max="280" step="2">
+        </div>
+        <div class="field">
+          <label for="rimHeight"><b id="l-rimHeight">Bowl rim height</b><span class="val mono" id="o-rimHeight"></span></label>
+          <input type="range" id="rimHeight" min="55" max="180" step="1">
+        </div>
+        <div class="field">
+          <label for="wall"><b id="l-wall">Wall thickness</b><span class="val mono" id="o-wall"></span></label>
+          <input type="range" id="wall" min="2.5" max="5" step="0.1">
+        </div>
+        <div class="field">
+          <label for="nSuper"><b id="l-nSuper">Shape</b><span class="val mono" id="o-nSuper"></span></label>
+          <input type="range" id="nSuper" min="2" max="6" step="0.1">
+        </div>
+      </div>
+
+      <div class="group">
+        <h2><span id="g-moat-t">Ant moat</span><span class="mono">mm</span></h2>
+        <div class="field">
+          <label for="trayH"><b id="l-trayH">Tray height</b><span class="val mono" id="o-trayH"></span></label>
+          <input type="range" id="trayH" min="10" max="34" step="1">
+        </div>
+        <div class="field">
+          <label for="moatGap"><b id="l-moatGap">Air gap</b><span class="val mono" id="o-moatGap"></span></label>
+          <input type="range" id="moatGap" min="6" max="18" step="0.5">
+        </div>
+        <p class="note" id="n-moat"></p>
+      </div>
+
+      <div class="group">
+        <h2><span id="g-handle-t">Side handles</span></h2>
+        <div class="switch" style="margin-bottom:12px">
+          <span id="l-handles">Handle openings</span>
+          <input type="checkbox" id="handles" checked>
+        </div>
+        <div class="field">
+          <label for="handleLen"><b id="l-handleLen">Length</b><span class="val mono" id="o-handleLen"></span></label>
+          <input type="range" id="handleLen" min="30" max="130" step="2">
+        </div>
+        <div class="field">
+          <label for="handleH"><b id="l-handleH">Height</b><span class="val mono" id="o-handleH"></span></label>
+          <input type="range" id="handleH" min="14" max="40" step="1">
+        </div>
+      </div>
+
+      <div class="group">
+        <h2><span id="g-name-t">Name on the rim</span><span class="mono" id="g-name-script">TH / EN</span></h2>
+        <div class="field">
+          <label for="pname"><b id="l-pname">Pet name</b></label>
+          <input type="text" id="pname" maxlength="24" placeholder="โมจิ · Mochi">
+        </div>
+        <div class="field">
+          <label id="l-nfont-lab"><b id="l-nfont">Lettering</b></label>
+          <div class="pills" id="nfont">
+            <button data-v="Kanit" aria-pressed="true">Kanit</button>
+            <button data-v="IBM Plex Sans Thai" aria-pressed="false">Plex</button>
+          </div>
+        </div>
+        <div class="field">
+          <label id="l-nstyle-lab"><b id="l-nstyle">Relief</b></label>
+          <div class="pills" id="nstyle">
+            <button data-v="raised" aria-pressed="true" id="ns-raised">Raised letters</button>
+            <button data-v="recessed" aria-pressed="false" id="ns-recessed">Recessed</button>
+            <button data-v="inlay" aria-pressed="false" id="ns-inlay">Flat inlay</button>
+          </div>
+        </div>
+        <div class="field">
+          <label id="l-nLayout-lab"><b id="l-nLayout">Layout</b></label>
+          <div class="pills" id="nlayout">
+            <button data-v="curved" aria-pressed="true" id="nl-curved">Curved</button>
+            <button data-v="flat" aria-pressed="false" id="nl-flat">Flat</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="nameSize"><b id="l-nameSize">Cap height</b><span class="val mono" id="o-nameSize"></span></label>
+          <input type="range" id="nameSize" min="4" max="16" step="0.5">
+        </div>
+        <div id="nctl" hidden>
+          <div class="field">
+            <label for="nRot"><b id="l-nRot">Rotation</b><span class="val mono" id="o-nRot"></span></label>
+            <input type="range" id="nRot" min="-180" max="180" step="5">
+          </div>
+        </div>
+        <div class="field">
+          <label for="emboss"><b id="l-emboss">Relief depth</b><span class="val mono" id="o-emboss"></span></label>
+          <input type="range" id="emboss" min="0" max="2" step="0.1">
+        </div>
+        <p class="note" id="n-name">Thai and Latin both work — Thai vowels and tone marks sit above and below the line, so give Thai names a little more cap height.</p>
+      </div>
+
+      <div class="group">
+        <h2><span id="g-logo-t">Logo on the rim</span><span class="mono">SVG</span></h2>
+        <input type="file" id="dfile" accept=".svg,image/svg+xml" hidden>
+        <div class="field">
+          <div class="drop" id="ddrop" role="button" tabindex="0">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M8 10.4V2.5M5 5.5 8 2.5l3 3M2.4 10.7v1.8a1 1 0 0 0 1 1h9.2a1 1 0 0 0 1-1v-1.8"/>
+            </svg>
+            <span id="d-drop-t">Drop an SVG here, or click to choose</span>
+          </div>
+        </div>
+        <div class="field dfile" id="dhas" hidden>
+          <span id="dname"></span>
+          <button type="button" id="dclear">Remove</button>
+        </div>
+        <div id="dctl" hidden>
+          <div class="switch" style="margin-bottom:12px">
+            <span id="l-dCombine">Share one plaque with the name</span>
+            <input type="checkbox" id="dCombine" checked>
+          </div>
+          <div class="field" id="dpos-f" hidden>
+            <label id="l-dPos-lab"><b id="l-dPos">Logo position</b></label>
+            <div class="pills" id="dpos">
+              <button data-v="left" aria-pressed="true" id="dp-left">Left</button>
+              <button data-v="right" aria-pressed="false" id="dp-right">Right</button>
+              <button data-v="above" aria-pressed="false" id="dp-above">Above</button>
+              <button data-v="below" aria-pressed="false" id="dp-below">Below</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="dSize"><b id="l-dSize">Logo height</b><span class="val mono" id="o-dSize"></span></label>
+            <input type="range" id="dSize" min="4" max="24" step="0.5">
+          </div>
+          <div id="dsolo">
+            <div class="field">
+              <label id="l-dLayout-lab"><b id="l-dLayout">Layout</b></label>
+              <div class="pills" id="dlayout">
+                <button data-v="curved" aria-pressed="false" id="dl-curved">Curved</button>
+                <button data-v="flat" aria-pressed="true" id="dl-flat">Flat</button>
+              </div>
+            </div>
+            <div class="field">
+              <label id="l-dStyle-lab"><b id="l-dStyle">Relief</b></label>
+              <div class="pills" id="dstyle">
+                <button data-v="raised" aria-pressed="true" id="ds-raised">Raised</button>
+                <button data-v="recessed" aria-pressed="false" id="ds-recessed">Recessed</button>
+                <button data-v="inlay" aria-pressed="false" id="ds-inlay">Flat inlay</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="dRot"><b id="l-dRot">Rotation</b><span class="val mono" id="o-dRot"></span></label>
+              <input type="range" id="dRot" min="-180" max="180" step="5">
+            </div>
+          </div>
+        </div>
+        <p class="note" id="n-logo">Filled shapes only — expand strokes to outlines before exporting. <b>Drag the logo on the preview</b> to slide it around the rim.</p>
+      </div>
+
+      <div class="group">
+        <h2><span id="g-print-t">Printer</span></h2>
+        <div class="field">
+          <label for="bed"><b id="l-bed">Bed size</b></label>
+          <select id="bed">
+            <option value="180">180 × 180 mm</option>
+            <option value="220">220 × 220 — Ender / A1 mini</option>
+            <option value="256" selected>256 × 256 — X1 / P1</option>
+            <option value="300">300 × 300</option>
+            <option value="350">350 × 350</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="alerts" id="alerts"></div>
+    </aside>
+  </div>
+
+  <dl class="spec" id="spec"></dl>
+</div>
+
+<script>
+/* Pet Bowl Master — parametric geometry engine.
+   A direct port of petbowl.py rev E, built without CSG: every part is one
+   closed cross-section profile swept around a superellipse, so the result is
+   watertight by construction. Runs in the browser and in node. */
+(function (root) {
+'use strict';
+
+var TAU = Math.PI * 2;
+
+/* ---------------------------------------------------------------- params */
+function derive(u) {
+  var P = {};
+  P.n        = u.nSuper;
+  P.wall     = u.wall;
+  P.shellA   = u.holderW / 2;
+
+  P.bowlD    = u.bowlD;
+  P.bowlDep  = u.bowlDepth;
+  P.taper    = 0.5;
+  P.seatLipR = u.bowlD / 2 - 5;          // bowl lands here, on its own flank
+  P.seatOpenR= P.seatLipR + 8;           // opening at the top face
+  P.drop     = (u.bowlD / 2 - P.seatLipR) / P.taper;   // rim sits this far up
+
+  P.trayH    = u.trayH;
+  P.trayWall = 3;
+  P.trayFloor= 2.6;
+  P.pedTopZ  = u.trayH - 3;      // foot always lands 3 mm below the tray rim
+  P.rimZ     = P.trayH - 1 - P.pedTopZ;   // tray's top outer EDGE, in body coords
+
+  P.seatLipZ = u.rimHeight - P.pedTopZ - P.drop;
+  P.bodyH    = P.seatLipZ + 8;
+  P.plateZ   = P.bodyH - 5;
+  P.topFill  = 6;
+  P.botCham  = 1.5;
+  P.collarT  = u.wall;
+
+  P.trayOutA = P.shellA - 3;             // body overhangs 3 mm per side
+  P.troughW  = 11;
+  P.pedOutA  = P.trayOutA - P.trayWall - P.troughW;
+  P.footA    = P.pedOutA - 4;
+  P.pedInA   = P.footA - 11;
+  P.lipOutA  = P.footA - u.wall - 1.5;
+  P.lipInA   = P.lipOutA - 4;
+  P.lipTopZ  = P.pedTopZ + 5;
+
+  P.moatGap  = u.moatGap;
+  P.coveMarg = 0.5;
+  P.voidSlope= 0.85;
+  P.footTopZ = 2;
+
+  P.handles  = u.handles;
+  P.handleL  = u.handleLen;
+  P.handleH  = u.handleH;
+  // centre the opening in the clear wall between the cove and the top plate,
+  // so changing tray height or bowl height keeps it where the hand goes
+  P.handleLo = P.rimZ + P.moatGap + 4;
+  P.handleHi = P.plateZ - 5;
+  P.handleZc = (P.handleLo + P.handleHi) / 2;
+  return P;
+}
+
+function validate(P) {
+  var w = [];
+  if (P.footA > P.trayOutA - P.moatGap)
+    w.push({k: 'moat', m: 'Holder too narrow for this moat gap — the foot would sit under the tray rim.'});
+  if (P.shellA - P.topFill - P.seatOpenR < 4)
+    w.push({k: 'rim', m: 'Top rim is under 4 mm wide. Widen the holder or use a smaller bowl.'});
+  if (P.seatLipZ < P.rimZ + P.moatGap + 6)
+    w.push({k: 'height', m: 'Too short for this moat gap — raise the bowl height.'});
+  if (P.handles && P.handleH > P.handleHi - P.handleLo)
+    w.push({k: 'handle', m: 'No clear wall left for handles this tall — shorten them, or raise the bowl height.'});
+  if (P.footA - P.wall <= P.lipOutA)
+    w.push({k: 'lip', m: 'Wall too thick for the locating lip at this size.'});
+  if (P.trayH - P.trayFloor < 7)
+    w.push({k: 'tray', m: 'Trough under 7 mm deep — it will need topping up often in dry season.'});
+  return w;
+}
+
+function fillDepth(P) {          // sensible water level for this trough
+  return Math.max(4, Math.min(18, P.trayH - P.trayFloor - 3));
+}
+
+/* ------------------------------------------------------------- profiles */
+function clearanceLimit(P, z) {
+  // Largest half-width allowed at z while staying moatGap away from the
+  // tray's top outer rim. This curve is what makes the visible gap equal the
+  // ant barrier instead of several times larger.
+  var dz = Math.abs(z - P.rimZ);
+  if (dz >= P.moatGap) return P.shellA;
+  return Math.min(P.shellA,
+    P.trayOutA - Math.sqrt(P.moatGap * P.moatGap - dz * dz) - P.coveMarg);
+}
+
+function aOuter(P, z) {
+  var ramp = P.footA + Math.max(z - P.footTopZ, 0) * 2.5;
+  var a = Math.max(P.footA, Math.min(ramp, clearanceLimit(P, z), P.shellA));
+  var rr = P.topFill, H = P.bodyH;
+  if (z > H - rr) {
+    var d = Math.min(z - (H - rr), rr);
+    a -= rr - Math.sqrt(Math.max(rr * rr - d * d, 0));
+  }
+  var lr = 1.2, zl = P.rimZ + P.moatGap;            // soften the cove lip
+  if (z >= zl && z < zl + lr) {
+    var e = z - (zl + lr);
+    a -= lr - Math.sqrt(Math.max(lr * lr - e * e, 0));
+  }
+  if (z < P.botCham) a -= (P.botCham - z);
+  return a;
+}
+
+function skinLevels(P) {
+  var zs = [], i;
+  var coveTop = P.rimZ + P.moatGap + 2;
+  for (i = 0; i <= 3; i++) zs.push(P.botCham * i / 3);
+  for (i = 1; i <= 30; i++) zs.push(P.botCham + (coveTop - P.botCham) * i / 30);
+  for (i = 1; i <= 6; i++) zs.push(coveTop + (P.bodyH - P.topFill - coveTop) * i / 6);
+  for (i = 1; i <= 8; i++) zs.push(P.bodyH - P.topFill + P.topFill * i / 8);
+  if (P.handles && P.handleL > 4) {
+    // the handle outline is cut cell by cell, so it is only as smooth as the
+    // rows crossing it — sample the band finely or the ellipse comes out as a
+    // staircase
+    var z0 = P.handleZc - P.handleH / 2 - 1.5, z1 = P.handleZc + P.handleH / 2 + 1.5;
+    var n = Math.max(32, Math.ceil((z1 - z0) / 0.42));
+    for (i = 0; i <= n; i++) zs.push(z0 + (z1 - z0) * i / n);
+  }
+  zs.sort(function (a, b) { return a - b; });
+  return zs.filter(function (z, k, arr) {
+    return z >= 0 && z <= P.bodyH && (k === 0 || z - arr[k - 1] > 1e-4);
+  });
+}
+
+function voidLevels(P, zs) {
+  // inner wall: `wall` inside the outer face, but never narrowing downward
+  // faster than voidSlope, so the cove prints inverted without support
+  var v = [], i;
+  for (i = 0; i < zs.length; i++) {
+    var cap = aOuter(P, zs[i]) - P.wall;
+    v.push(i === 0 ? cap : Math.min(cap, v[i - 1] + P.voidSlope * (zs[i] - zs[i - 1])));
+  }
+  return v;
+}
+
+/* ------------------------------------------------------------ mesh core */
+function seShape(n, seg) {           // superellipse radius factor per angle
+  var k = new Float64Array(seg), t;
+  for (var i = 0; i < seg; i++) {
+    t = TAU * i / seg;
+    k[i] = 1 / Math.pow(Math.pow(Math.abs(Math.cos(t)), n) +
+                        Math.pow(Math.abs(Math.sin(t)), n), 1 / n);
+  }
+  return k;
+}
+
+function Mesh() { this.p = []; this.f = []; }
+Mesh.prototype.v = function (x, y, z) { this.p.push(x, y, z); return this.p.length / 3 - 1; };
+Mesh.prototype.tri = function (a, b, c) { this.f.push(a, b, c); };
+Mesh.prototype.quad = function (a, b, c, d) { this.f.push(a, b, c, a, c, d); };
+Mesh.prototype.count = function () { return this.f.length / 3; };
+
+function signedVolume(m) {
+  var p = m.p, f = m.f, v = 0;
+  for (var i = 0; i < f.length; i += 3) {
+    var a = f[i] * 3, b = f[i + 1] * 3, c = f[i + 2] * 3;
+    v += (p[a] * (p[b + 1] * p[c + 2] - p[b + 2] * p[c + 1])
+        - p[a + 1] * (p[b] * p[c + 2] - p[b + 2] * p[c])
+        + p[a + 2] * (p[b] * p[c + 1] - p[b + 1] * p[c])) / 6;
+  }
+  return v;
+}
+
+function flip(m) { for (var i = 0; i < m.f.length; i += 3) { var t = m.f[i + 1]; m.f[i + 1] = m.f[i + 2]; m.f[i + 2] = t; } }
+
+/* Sweep a closed (a, z, mode) profile around the superellipse.
+   mode 1 = follows the squircle, 0 = circular. `skip(i, p)` may drop a quad;
+   dropped regions are walled by the caller. */
+function sweep(prof, n, seg, skip, wall) {
+  var m = new Mesh(), k = seShape(n, seg), i, j, t, r;
+  var M = prof.length;
+  for (i = 0; i < seg; i++) {
+    t = TAU * i / seg;
+    var ct = Math.cos(t), st = Math.sin(t);
+    for (j = 0; j < M; j++) {
+      r = prof[j].a * (1 + prof[j].m * (k[i] - 1));
+      m.v(r * ct, r * st, prof[j].z);
+    }
+  }
+  var id = function (i2, j2) { return ((i2 % seg) * M) + j2; };
+  for (i = 0; i < seg; i++) {
+    for (j = 0; j < M; j++) {
+      var j2 = (j + 1) % M;
+      if (skip && skip(i, j)) continue;
+      m.quad(id(i, j), id(i + 1, j), id(i + 1, j2), id(i, j2));
+    }
+  }
+  if (wall) wall(m, id, seg, M);
+  if (signedVolume(m) < 0) flip(m);
+  return m;
+}
+
+/* ----------------------------------------------------------- Part A body */
+function buildBody(P, seg) {
+  var zs = skinLevels(P), vs = voidLevels(P, zs), i;
+  var K = zs.length;
+  var prof = [];
+  var outerStart = 0;
+  for (i = 0; i < K; i++) prof.push({a: aOuter(P, zs[i]), z: zs[i], m: 1});
+  var aTop = aOuter(P, P.bodyH);
+  prof.push({a: P.seatOpenR, z: P.bodyH, m: 0});                  // top face
+  prof.push({a: P.seatLipR, z: P.seatLipZ, m: 0});                // 45 deg seat
+  var off = P.collarT * Math.SQRT2;
+  prof.push({a: P.seatLipR + off, z: P.seatLipZ, m: 0});          // collar lip
+  prof.push({a: P.seatLipR + off + (P.plateZ - P.seatLipZ), z: P.plateZ, m: 0});
+  var vAtPlate = 0;
+  for (i = 0; i < K; i++) if (zs[i] <= P.plateZ) vAtPlate = vs[i];
+  prof.push({a: vAtPlate, z: P.plateZ, m: 1});                    // plate under
+  var innerStart = prof.length;
+  var innerZ = [], innerV = [];
+  for (i = K - 1; i >= 0; i--) if (zs[i] < P.plateZ) { innerZ.push(zs[i]); innerV.push(vs[i]); }
+  for (i = 0; i < innerZ.length; i++) prof.push({a: innerV[i], z: innerZ[i], m: 1});
+
+  // profile index of the outer skin / inner skin at each z level
+  var outIdx = [], inIdx = [];
+  for (i = 0; i < K; i++) {
+    outIdx.push(outerStart + i);
+    var w = innerZ.indexOf(zs[i]);
+    inIdx.push(w < 0 ? -1 : innerStart + w);
+  }
+
+  /* handle openings, defined in (arc, z) parameter space so the hole cut out
+     of the outer skin and the one cut out of the inner skin match exactly */
+  var SEGC = seg;
+  var holeCell = null;
+  if (P.handles && P.handleL > 4) {
+    var ra = P.handleL / 2, rb = P.handleH / 2;   // ellipse semi-axes
+    var inHole = function (th, z) {
+      for (var c = 0; c < 2; c++) {
+        var d = th - c * Math.PI;
+        d = Math.atan2(Math.sin(d), Math.cos(d)) * P.shellA;   // arc length
+        var u = d / ra, w = (z - P.handleZc) / rb;
+        if (u * u + w * w <= 1) return true;
+      }
+      return false;
+    };
+    holeCell = function (i2, k) {
+      var th = TAU * (i2 + 0.5) / SEGC;
+      var z = (zs[k] + zs[k + 1]) / 2;
+      return inHole(th, z);
+    };
+  }
+
+  var skip = null, wallFn = null;
+  if (holeCell) {
+    var mask = [];
+    for (i = 0; i < seg; i++) {
+      mask.push(new Uint8Array(K));
+      for (var k = 0; k < K - 1; k++) if (holeCell(i, k) && inIdx[k] >= 0 && inIdx[k + 1] >= 0) mask[i][k] = 1;
+    }
+    var skipOut = [];
+    for (i = 0; i < seg; i++) skipOut.push(new Uint8Array(prof.length));
+    for (i = 0; i < seg; i++) {
+      for (var k3 = 0; k3 < K - 1; k3++) if (mask[i][k3]) {
+        skipOut[i][outIdx[k3]] = 1;
+        skipOut[i][inIdx[k3 + 1]] = 1;   // inner skin runs the other way
+      }
+    }
+    skip = function (i2, j) { return skipOut[i2][j] === 1; };
+
+    wallFn = function (m, id, segN, M) {
+      var quads = [];
+      for (var a = 0; a < segN; a++) for (var b = 0; b < K - 1; b++) {
+        if (!mask[a][b]) continue;
+        var oL = outIdx[b], oH = outIdx[b + 1], iL = inIdx[b], iH = inIdx[b + 1];
+        // theta-direction walls
+        if (!mask[(a - 1 + segN) % segN][b])
+          quads.push([id(a, oL), id(a, oH), id(a, iH), id(a, iL)]);
+        if (!mask[(a + 1) % segN][b])
+          quads.push([id(a + 1, oH), id(a + 1, oL), id(a + 1, iL), id(a + 1, iH)]);
+        // z-direction walls
+        if (b === 0 || !mask[a][b - 1])
+          quads.push([id(a + 1, oL), id(a, oL), id(a, iL), id(a + 1, iL)]);
+        if (b === K - 2 || !mask[a][b + 1])
+          quads.push([id(a, oH), id(a + 1, oH), id(a + 1, iH), id(a, iH)]);
+      }
+      for (var q = 0; q < quads.length; q++) m.quad(quads[q][3], quads[q][2], quads[q][1], quads[q][0]);
+    };
+  }
+  return sweep(prof, P.n, seg, skip, wallFn);
+}
+
+/* ----------------------------------------------------------- Part B tray */
+function buildTray(P, seg) {
+  var A = P.trayOutA, W = P.trayWall, F = P.trayFloor, H = P.trayH;
+  var prof = [
+    {a: 0,          z: 0,  m: 0},
+    {a: A - 1.5,    z: 0,  m: 1},
+    {a: A,          z: 1.5, m: 1},
+    {a: A,          z: H - 1, m: 1},
+    {a: A - 1,      z: H,  m: 1},
+    {a: A - W,      z: H,  m: 1},
+    {a: A - W,      z: F,  m: 1},
+    {a: P.pedOutA,  z: F,  m: 1},
+    {a: P.pedOutA,  z: P.pedTopZ, m: 1},
+    {a: P.lipOutA,  z: P.pedTopZ, m: 1},
+    {a: P.lipOutA,  z: P.lipTopZ - 1, m: 1},
+    {a: P.lipOutA - 1, z: P.lipTopZ, m: 1},
+    {a: P.lipInA,   z: P.lipTopZ, m: 1},
+    {a: P.lipInA,   z: P.pedTopZ, m: 1},
+    {a: P.pedInA,   z: P.pedTopZ, m: 1},
+    {a: P.pedInA,   z: F,  m: 1},
+    {a: 0,          z: F,  m: 0}
+  ];
+  var m = sweepAxis(prof, P.n, seg);
+  return m;
+}
+
+/* sweep for a profile that touches the axis: r = 0 points collapse to one vertex */
+function sweepAxis(prof, n, seg) {
+  var m = new Mesh(), k = seShape(n, seg), i, j;
+  var M = prof.length, axis = [], idx = [];
+  for (j = 0; j < M; j++) axis.push(prof[j].a < 1e-9);
+  for (j = 0; j < M; j++) idx.push(axis[j] ? m.v(0, 0, prof[j].z) : -1);
+  var ringBase = m.p.length / 3;
+  for (i = 0; i < seg; i++) {
+    var t = TAU * i / seg, ct = Math.cos(t), st = Math.sin(t);
+    for (j = 0; j < M; j++) {
+      if (axis[j]) continue;
+      var r = prof[j].a * (1 + prof[j].m * (k[i] - 1));
+      m.v(r * ct, r * st, prof[j].z);
+    }
+  }
+  var nr = 0, map = [];
+  for (j = 0; j < M; j++) { map.push(axis[j] ? -1 : nr); if (!axis[j]) nr++; }
+  var id = function (i2, j2) {
+    return axis[j2] ? idx[j2] : ringBase + (i2 % seg) * nr + map[j2];
+  };
+  for (i = 0; i < seg; i++) for (j = 0; j < M; j++) {
+    var j2 = (j + 1) % M;
+    if (axis[j] && axis[j2]) continue;
+    if (axis[j])      m.tri(id(i, j), id(i + 1, j2), id(i, j2));
+    else if (axis[j2]) m.tri(id(i, j), id(i + 1, j), id(i, j2));
+    else               m.quad(id(i, j), id(i + 1, j), id(i + 1, j2), id(i, j2));
+  }
+  if (signedVolume(m) < 0) flip(m);
+  return m;
+}
+
+/* -------------------------------------------------------------- name art */
+/* How far the artwork bites DOWN into the rim. 0.25 mm is enough to weld a
+   raised solid to the body, but at a relief depth near zero that 0.25 would be
+   the whole solid — one layer, too thin to read as a colour. So keep the total
+   at 0.6 mm minimum. This is a no-op at every depth the slider used to reach:
+   from 0.35 mm up, 0.6 - emboss is already under 0.25. */
+function seatBite(emboss) { return Math.max(0.25, 0.6 - emboss); }
+
+function box(m, corners) {                       // corners: 4 bottom, 4 top
+  var b = [], i;
+  for (i = 0; i < 8; i++) b.push(m.v(corners[i][0], corners[i][1], corners[i][2]));
+  m.quad(b[3], b[2], b[1], b[0]);                // bottom
+  m.quad(b[4], b[5], b[6], b[7]);                // top
+  m.quad(b[0], b[1], b[5], b[4]);
+  m.quad(b[1], b[2], b[6], b[5]);
+  m.quad(b[2], b[3], b[7], b[6]);
+  m.quad(b[3], b[0], b[4], b[7]);
+}
+
+/* Map a rectangle of the text bitmap onto the rim band and extrude it.
+   u runs along the arc, v across the band width. */
+/* Sweeps a field of unit-square rects onto the flat top ring as closed boxes.
+   Nothing here is text-specific — the name engraver and the SVG logo both
+   feed it, which is how the logo inherits the watertight guarantee. */
+function nameMesh(P, rects, opt) {
+  var m = new Mesh();
+  var z0 = P.bodyH - seatBite(opt.emboss), z1 = P.bodyH + opt.emboss;
+  var rMid = opt.bandR, bw = opt.bandW;
+  var arc = opt.arcLen;                       // total arc length of the band
+  var th0 = opt.thetaC;
+  for (var q = 0; q < rects.length; q++) {
+    var R = rects[q];
+    var s0 = (R.x0 - 0.5) * arc, s1 = (R.x1 - 0.5) * arc;
+    var r0 = rMid + (R.y0 - 0.5) * bw, r1 = rMid + (R.y1 - 0.5) * bw;
+    var steps = Math.max(1, Math.ceil(Math.abs(s1 - s0) / (rMid * 0.035)));
+    for (var st = 0; st < steps; st++) {
+      var a0 = th0 + (s0 + (s1 - s0) * st / steps) / rMid;
+      var a1 = th0 + (s0 + (s1 - s0) * (st + 1) / steps) / rMid;
+      var pts = [], ang = [a0, a1];
+      for (var e = 0; e < 2; e++) {
+        for (var f = 0; f < 2; f++) {
+          var rr = f === 0 ? r0 : r1, aa = e === 0 ? a0 : a1;
+          pts.push([rr * Math.cos(aa), rr * Math.sin(aa)]);
+        }
+      }
+      var o = [pts[0], pts[1], pts[3], pts[2]];
+      box(m, [
+        [o[0][0], o[0][1], z0], [o[1][0], o[1][1], z0], [o[2][0], o[2][1], z0], [o[3][0], o[3][1], z0],
+        [o[0][0], o[0][1], z1], [o[1][0], o[1][1], z1], [o[2][0], o[2][1], z1], [o[3][0], o[3][1], z1]
+      ]);
+    }
+  }
+  return m;
+}
+
+/* Lays the same rect field on the top face as a plane instead of an arc, so
+   the artwork keeps its proportions — a square logo stays square.
+
+   The axis convention is nameMesh's, so switching modes never mirrors or
+   flips the artwork: u runs along the baseline (counter-clockwise tangential
+   when rot is the position angle) and v points outward across it. That pair
+   is left-handed, which is why the corner cycle below runs the opposite way
+   round from the obvious one — it has to, to keep the boxes wound outward. */
+function flatMesh(P, rects, opt) {
+  var m = new Mesh();
+  var z0 = P.bodyH - seatBite(opt.emboss), z1 = P.bodyH + opt.emboss;
+  var ux = -Math.sin(opt.rot), uy = Math.cos(opt.rot);
+  var vx = Math.cos(opt.rot), vy = Math.sin(opt.rot);
+  var pt = function (u, v) { return [opt.cx + u * ux + v * vx, opt.cy + u * uy + v * vy]; };
+  for (var q = 0; q < rects.length; q++) {
+    var R = rects[q];
+    var u0 = (R.x0 - 0.5) * opt.w, u1 = (R.x1 - 0.5) * opt.w;
+    var v0 = (R.y0 - 0.5) * opt.h, v1 = (R.y1 - 0.5) * opt.h;
+    var o = [pt(u0, v0), pt(u0, v1), pt(u1, v1), pt(u1, v0)];
+    box(m, [
+      [o[0][0], o[0][1], z0], [o[1][0], o[1][1], z0], [o[2][0], o[2][1], z0], [o[3][0], o[3][1], z0],
+      [o[0][0], o[0][1], z1], [o[1][0], o[1][1], z1], [o[2][0], o[2][1], z1], [o[3][0], o[3][1], z1]
+    ]);
+  }
+  return m;
+}
+
+/* Corners of a flat placement, in flatMesh's frame. */
+function flatCorners(cx, cy, w, h, rot) {
+  var ux = -Math.sin(rot), uy = Math.cos(rot);
+  var vx = Math.cos(rot), vy = Math.sin(rot), p = [], i;
+  for (i = 0; i < 4; i++) {
+    var u = (i === 0 || i === 3 ? -1 : 1) * w / 2;
+    var v = (i < 2 ? -1 : 1) * h / 2;
+    p.push([cx + u * ux + v * vx, cy + u * uy + v * vy]);
+  }
+  return p;
+}
+
+/* Does a flat placement stay on the top face? That face is an annulus between
+   a CIRCULAR bowl opening and a SQUIRCLE outer edge, so each edge needs its
+   own test. */
+function fitsTop(P, cx, cy, w, h, rot, margin) {
+  var mg = margin || 0, pts = flatCorners(cx, cy, w, h, rot), i;
+  // outer: the superellipse region is convex, so the corners settle it
+  var aTop = P.shellA - P.topFill, n = P.n;
+  for (i = 0; i < 4; i++) {
+    var x = pts[i][0], y = pts[i][1], t = Math.atan2(y, x);
+    var k = 1 / Math.pow(Math.pow(Math.abs(Math.cos(t)), n) +
+                         Math.pow(Math.abs(Math.sin(t)), n), 1 / n);
+    if (Math.hypot(x, y) > aTop * k - mg) return false;
+  }
+  // inner: must stay OUTSIDE the seat opening. The nearest point to the centre
+  // can fall mid-edge, so a corner-only test would wrongly pass a rectangle
+  // whose long edge cuts across the bowl opening.
+  for (i = 0; i < 4; i++) {
+    var a = pts[i], b = pts[(i + 1) % 4];
+    var dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+    var u2 = L2 > 0 ? -(a[0] * dx + a[1] * dy) / L2 : 0;
+    u2 = Math.max(0, Math.min(1, u2));
+    if (Math.hypot(a[0] + dx * u2, a[1] + dy * u2) < P.seatOpenR + mg) return false;
+  }
+  return true;
+}
+
+/* Greedy rectangle decomposition of a binary mask — keeps the prism count
+   in the hundreds instead of one box per pixel. */
+function maskToRects(mask, W, H) {
+  var used = new Uint8Array(W * H), rects = [], x, y, w, h, ok;
+  for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+    if (!mask[y * W + x] || used[y * W + x]) continue;
+    w = 0; while (x + w < W && mask[y * W + x + w] && !used[y * W + x + w]) w++;
+    h = 1;
+    while (y + h < H) {
+      ok = true;
+      for (var i = 0; i < w; i++)
+        if (!mask[(y + h) * W + x + i] || used[(y + h) * W + x + i]) { ok = false; break; }
+      if (!ok) break;
+      h++;
+    }
+    for (var b = 0; b < h; b++) for (var a = 0; a < w; a++) used[(y + b) * W + x + a] = 1;
+    rects.push({x0: x / W, x1: (x + w) / W, y0: y / H, y1: (y + h) / H});
+  }
+  return rects;
+}
+
+/* ---------------------------------------------------------- merged badge */
+/* Composite two independently-normalised masks onto ONE grid at a single
+   px/mm, so the name and the logo can share one plaque.
+
+   Each input was scaled so its OWN ink bbox is exactly H rows tall, which
+   means the two encode different mm-per-pixel (~7.0 vs ~7.2 at the default
+   sliders, up to 4.7x apart at the extremes). This is where they go back on
+   one ruler. They cannot simply be copied side by side.
+
+   `pos` says where b sits relative to a. a is the reference piece: its block
+   height comes back as padRef so the plaque border stays proportional to the
+   LETTERING rather than to the whole badge — without that a stacked badge
+   grows a 5.7 mm border and squeezes the name off the rim. */
+function mergeArt(a, aMM, b, bMM, pos, opt) {
+  var o = opt || {};
+  var gapFrac = o.gapFrac === undefined ? 0.30 : o.gapFrac;
+  var minGapMM = o.minGapMM === undefined ? 0.8 : o.minGapMM;
+  var maxPx = o.maxPx || 260000, minPpmm = o.minPpmm || 2;
+
+  if (!a && !b) return null;
+  if (!a || !b) {                                 // solo: hand back the input as-is
+    var s = a || b, sMM = a ? aMM : bMM, blk = {x: 0, y: 0, w: s.W, h: s.H};
+    return {mask: s.mask, W: s.W, H: s.H, aspect: s.W / s.H, ppmm: s.H / sMM,
+            heightMM: sMM, padRef: s.H, capped: false,
+            blocks: {a: a ? blk : null, b: a ? null : blk}};
+  }
+
+  /* max, not min: the finer piece is copied 1:1 and the coarser is upsampled.
+     Upsampling a binary mask invents nothing; downsampling drops features
+     maskToRects would otherwise have carried. */
+  var ppmm = Math.max(a.H / aMM, b.H / bMM), capped = false;
+  var side = pos === 'left' || pos === 'right';
+  var nw, nh, dw, dh, gp, W, H;
+
+  /* Up to a few passes: sqrt(maxPx/area) is exact for area, but every block is
+     rounded UP to a whole pixel and the gap is added on top, so one pass can
+     land just over. The 0.995 makes each pass undershoot slightly and converge. */
+  for (var pass = 0; pass < 6; pass++) {
+    nh = Math.max(1, Math.round(aMM * ppmm));
+    nw = Math.max(1, Math.round(aMM * a.aspect * ppmm));
+    dh = Math.max(1, Math.round(bMM * ppmm));
+    dw = Math.max(1, Math.round(bMM * b.aspect * ppmm));
+    /* The 0.8 mm floor matches thinFraction's minMM: under RAISED relief this
+       gap is bare rim between two solids, and anything thinner fuses in the
+       slicer. Under recessed/inlay it is plaque material and unconstrained. */
+    gp = Math.max(1, Math.round(Math.max(minGapMM, gapFrac * Math.min(aMM, bMM)) * ppmm));
+    W = side ? nw + gp + dw : Math.max(nw, dw);
+    H = side ? Math.max(nh, dh) : nh + gp + dh;
+    if (W * H <= maxPx || ppmm <= minPpmm) break;
+    capped = true;
+    ppmm = Math.max(minPpmm, ppmm * Math.sqrt(maxPx / (W * H)) * 0.995);
+  }
+
+  /* Bitmap +x runs counter-clockwise along the rim, +y runs radially OUTWARD,
+     so "above the text" is the smaller y. */
+  var cy = function (h) { return (H - h) >> 1; }, cx = function (w) { return (W - w) >> 1; };
+  var A, B;
+  if (pos === 'left')       { B = {x: 0, y: cy(dh)}; A = {x: dw + gp, y: cy(nh)}; }
+  else if (pos === 'right') { A = {x: 0, y: cy(nh)}; B = {x: nw + gp, y: cy(dh)}; }
+  else if (pos === 'above') { B = {x: cx(dw), y: 0}; A = {x: cx(nw), y: dh + gp}; }
+  else                      { A = {x: cx(nw), y: 0}; B = {x: cx(dw), y: nh + gp}; }
+  A.w = nw; A.h = nh; B.w = dw; B.h = dh;
+
+  var mask = new Uint8Array(W * H);
+  blit(mask, W, a.mask, a.W, a.H, A);
+  blit(mask, W, b.mask, b.W, b.H, B);
+
+  return {mask: mask, W: W, H: H, aspect: W / H, ppmm: ppmm,
+          heightMM: H / ppmm, padRef: nh, blocks: {a: A, b: B}, capped: capped};
+}
+
+/* Nearest-neighbour into a block, ORing so a block can never erase another.
+   The clamps matter here in a way they do not in the two rasterisers: those
+   only ever downsample, this one upsamples, and (y+0.5)*sh/dh can then reach
+   sh exactly. */
+function blit(dst, DW, src, sw, sh, blk) {
+  for (var y = 0; y < blk.h; y++) {
+    var sy = Math.min(sh - 1, Math.floor((y + 0.5) * sh / blk.h));
+    var ro = sy * sw, wo = (blk.y + y) * DW + blk.x;
+    for (var x = 0; x < blk.w; x++) {
+      var sx = Math.min(sw - 1, Math.floor((x + 0.5) * sw / blk.w));
+      if (src[ro + sx]) dst[wo + x] = 1;
+    }
+  }
+}
+
+/* Rects for either name style: raised letters, or a raised plaque with the
+   letters left as gaps down to the rim face. */
+function nameRects(mask, W, H, style, padPx, radPx) {
+  if (style !== 'recessed') return maskToRects(mask, W, H);
+  var inv = new Uint8Array(W * H), x, y;
+  for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+    var inside = x >= padPx && x < W - padPx && y >= padPx && y < H - padPx;
+    if (inside && radPx > 0) {           // rounded plaque corners
+      var cx = Math.min(Math.max(x, padPx + radPx), W - padPx - radPx - 1);
+      var cy = Math.min(Math.max(y, padPx + radPx), H - padPx - radPx - 1);
+      var dx = x - cx, dy = y - cy;
+      if (dx * dx + dy * dy > radPx * radPx) inside = false;
+    }
+    inv[y * W + x] = (inside && !mask[y * W + x]) ? 1 : 0;
+  }
+  return maskToRects(inv, W, H);
+}
+
+/* ------------------------------------------------------------ STL export */
+function toSTL(meshes) {
+  var n = 0, i;
+  for (i = 0; i < meshes.length; i++) n += meshes[i].count();
+  var buf = new ArrayBuffer(84 + n * 50), dv = new DataView(buf), o = 84;
+  dv.setUint32(80, n, true);
+  for (var k = 0; k < meshes.length; k++) {
+    var m = meshes[k], p = m.p, f = m.f;
+    for (i = 0; i < f.length; i += 3) {
+      var a = f[i] * 3, b = f[i + 1] * 3, c = f[i + 2] * 3;
+      var ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2];
+      var vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], vz = p[c + 2] - p[a + 2];
+      var nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      var L = Math.hypot(nx, ny, nz) || 1;
+      dv.setFloat32(o, nx / L, true); dv.setFloat32(o + 4, ny / L, true); dv.setFloat32(o + 8, nz / L, true);
+      dv.setFloat32(o + 12, p[a], true);     dv.setFloat32(o + 16, p[a + 1], true); dv.setFloat32(o + 20, p[a + 2], true);
+      dv.setFloat32(o + 24, p[b], true);     dv.setFloat32(o + 28, p[b + 1], true); dv.setFloat32(o + 32, p[b + 2], true);
+      dv.setFloat32(o + 36, p[c], true);     dv.setFloat32(o + 40, p[c + 1], true); dv.setFloat32(o + 44, p[c + 2], true);
+      o += 50;
+    }
+  }
+  return buf;
+}
+
+root.PBM = {
+  derive: derive, validate: validate, buildBody: buildBody, buildTray: buildTray,
+  nameMesh: nameMesh, flatMesh: flatMesh, fitsTop: fitsTop, flatCorners: flatCorners,
+  maskToRects: maskToRects, nameRects: nameRects, mergeArt: mergeArt, toSTL: toSTL,
+  fillDepth: fillDepth,
+  signedVolume: signedVolume, aOuter: aOuter, clearanceLimit: clearanceLimit,
+  Mesh: Mesh
+};
+})(typeof module !== 'undefined' ? module.exports : window);
+
+</script>
+<script>
+/* ============================== Pet Bowl Master — app ===================== */
+(function () {
+'use strict';
+var G = window.PBM;
+
+/* ------------------------------------------------------------------ i18n */
+var STR = {
+  en: {
+    sub: 'Parametric ant-proof bowl holder · STL generator',
+    save: 'Download STL set', saving: 'Building files…',
+    preset: 'Preset', bowl: 'Stainless bowl', holder: 'Holder', moat: 'Ant moat',
+    handle: 'Side handles', name: 'Name on the rim', logo: 'Logo on the rim', printer: 'Printer',
+    bowlD: 'Rim diameter', bowlDepth: 'Bowl depth', holderW: 'Outer width',
+    rimHeight: 'Bowl rim height', wall: 'Wall thickness', nSuper: 'Shape',
+    moatGap: 'Air gap', trayH: 'Tray height', handles: 'Handle openings', handleLen: 'Length', handleH: 'Height',
+    pname: 'Pet name', nfont: 'Lettering', nstyle: 'Relief', nameSize: 'Text height',
+    emboss: 'Relief depth', bed: 'Bed size',
+    raised: 'Raised letters', recessed: 'Recessed', inlay: 'Flat inlay',
+    dStyle: 'Relief', dSize: 'Logo height', dRot: 'Rotation',
+    dCombine: 'Share one plaque with the name', dPos: 'Logo position',
+    pLeft: 'Left', pRight: 'Right', pAbove: 'Above', pBelow: 'Below',
+    layout: 'Layout', curved: 'Curved', flat: 'Flat', nRot: 'Rotation',
+    dDrop: 'Drop an SVG here, or click to choose', dClear: 'Remove',
+    dRaised: 'Raised', dRecessed: 'Recessed', dInlay: 'Flat inlay',
+    presets: ['Cat', 'Puppy', 'Medium dog', 'Large dog'],
+    vAll: 'Assembly', vBody: 'Holder', vTray: 'Tray', vBowl: 'Bowl', vWater: 'Water',
+    nBowl: 'Measure the <b>outside of the rim</b>. The bowl drops in and lands on its own flank, so a few millimetres out just seats it slightly higher.',
+    nName: 'Thai and Latin both work — Thai vowels and tone marks sit above and below the line, so give Thai names a little more text height. <b>Curved</b> follows the rim; <b>Flat</b> lies straight. Drag it on the preview to move it.',
+    nLogo: 'Filled shapes only — expand strokes to outlines before exporting. Sharing a plaque, <b>drag the badge</b> and the name and logo move together; on its own, drag the logo. Above and Below stack the two heights on a rim only about 10 mm wide — Left or Right has far more room.',
+    moatNote: 'An ant climbing the tray reaches the rim and finds <b>{g} mm of open air</b> in every direction. Ants can’t jump, so that gap is the barrier — and the holder’s underside hugs it exactly, which is why the two parts sit so close.',
+    shapeOf: function (n) { return n < 2.6 ? 'round' : n < 3.6 ? 'soft squircle' : n < 4.8 ? 'squircle' : 'boxy'; },
+    stHolder: 'W × H', stRim: 'Rim height', stGap: 'Ant gap', stFil: 'Filament',
+    spec: {
+      a: 'Part A — holder', b: 'Part B — moat tray', moatCap: 'Moat capacity',
+      seat: 'Bowl seat Ø', bed: 'Bed fit', orient: 'Print orientation',
+      fits: 'fits with {m} mm spare', over: 'TOO BIG by {m} mm',
+      aOri: 'inverted, top face down', bOri: 'as exported, floor down',
+      est: 'est. filament', notes: '4 walls · 12 % infill · no supports',
+      deep: 'of water', trough: 'trough'
+    },
+    dlOk: 'Saved. Slice Part A upside down.',
+    dlNo: 'Downloads aren’t available in this view.',
+    dlFail: 'Couldn’t save: '
+  },
+  th: {
+    sub: 'ชามสัตว์เลี้ยงกันมด · สร้างไฟล์ STL',
+    save: 'ดาวน์โหลดไฟล์ STL', saving: 'กำลังสร้างไฟล์…',
+    preset: 'ขนาดสำเร็จรูป', bowl: 'ชามสเตนเลส', holder: 'ตัวฐาน', moat: 'ร่องน้ำกันมด',
+    handle: 'ช่องจับด้านข้าง', name: 'ชื่อบนขอบ', logo: 'โลโก้บนขอบ', printer: 'เครื่องพิมพ์',
+    bowlD: 'เส้นผ่าศูนย์กลางปากชาม', bowlDepth: 'ความลึกชาม', holderW: 'ความกว้างฐาน',
+    rimHeight: 'ความสูงขอบชาม', wall: 'ความหนาผนัง', nSuper: 'รูปทรง',
+    moatGap: 'ระยะช่องว่าง', trayH: 'ความสูงถาด', handles: 'เปิดช่องจับ', handleLen: 'ความยาว', handleH: 'ความสูง',
+    pname: 'ชื่อสัตว์เลี้ยง', nfont: 'แบบอักษร', nstyle: 'ลักษณะตัวอักษร', nameSize: 'ความสูงตัวอักษร',
+    emboss: 'ความนูน/ลึก', bed: 'ขนาดฐานพิมพ์',
+    raised: 'ตัวนูน', recessed: 'ตัวจม', inlay: 'ฝังเรียบ',
+    dStyle: 'ลักษณะโลโก้', dSize: 'ความสูงโลโก้', dRot: 'การหมุน',
+    dCombine: 'ใช้แผ่นป้ายร่วมกับชื่อ', dPos: 'ตำแหน่งโลโก้',
+    pLeft: 'ซ้าย', pRight: 'ขวา', pAbove: 'บน', pBelow: 'ล่าง',
+    layout: 'การจัดวาง', curved: 'โค้งตามขอบ', flat: 'แบนราบ', nRot: 'การหมุน',
+    dDrop: 'ลากไฟล์ SVG มาวางที่นี่ หรือคลิกเพื่อเลือก', dClear: 'ลบออก',
+    dRaised: 'นูน', dRecessed: 'จม', dInlay: 'ฝังเรียบ',
+    presets: ['แมว', 'ลูกสุนัข', 'สุนัขกลาง', 'สุนัขใหญ่'],
+    vAll: 'ประกอบ', vBody: 'ตัวฐาน', vTray: 'ถาด', vBowl: 'ชาม', vWater: 'น้ำ',
+    nBowl: 'วัด<b>ขอบนอกของชาม</b> ชามจะวางลงบนผนังเอียงของตัวมันเอง คลาดเคลื่อนเล็กน้อยแค่ทำให้ชามสูงขึ้นนิดเดียว',
+    nName: 'ใช้ได้ทั้งไทยและอังกฤษ — สระและวรรณยุกต์ไทยอยู่บนและล่างบรรทัด จึงควรเพิ่มความสูงตัวอักษรสักหน่อย <b>โค้งตามขอบ</b> จะโค้งไปตามขอบ ส่วน <b>แบนราบ</b> จะวางตรง ลากบนภาพตัวอย่างเพื่อย้ายตำแหน่ง',
+    nLogo: 'ใช้รูปทรงทึบเท่านั้น — แปลงเส้น (stroke) ให้เป็นรูปทรงก่อนส่งออก เมื่อใช้แผ่นป้ายร่วมกัน ให้<b>ลากแผ่นป้าย</b> ชื่อและโลโก้จะเลื่อนไปด้วยกัน ถ้าแยกกันให้ลากโลโก้ การวางบนหรือล่างจะบวกความสูงทั้งสองเข้าด้วยกัน แต่ขอบชามกว้างราว 10 มม. เท่านั้น — ซ้ายหรือขวาจึงมีที่มากกว่ามาก',
+    moatNote: 'มดที่ไต่ขึ้นถาดจะเจอ<b>ช่องว่าง {g} มม.</b> รอบด้าน มดกระโดดไม่ได้ ช่องว่างนี้จึงเป็นกำแพงกันมด และใต้ตัวฐานถูกออกแบบให้แนบช่องนี้พอดี สองชิ้นจึงชิดกันมาก',
+    shapeOf: function (n) { return n < 2.6 ? 'กลม' : n < 3.6 ? 'มนนุ่ม' : n < 4.8 ? 'สี่เหลี่ยมมน' : 'เหลี่ยม'; },
+    stHolder: 'กว้าง × สูง', stRim: 'ความสูงขอบ', stGap: 'ช่องกันมด', stFil: 'เส้นพลาสติก',
+    spec: {
+      a: 'ชิ้น A — ตัวฐาน', b: 'ชิ้น B — ถาดน้ำ', moatCap: 'ความจุร่องน้ำ',
+      seat: 'ปากรับชาม Ø', bed: 'พอดีฐานพิมพ์', orient: 'ทิศทางการพิมพ์',
+      fits: 'เหลือ {m} มม.', over: 'ใหญ่เกิน {m} มม.',
+      aOri: 'คว่ำ เอาหน้าบนลงฐาน', bOri: 'ตามไฟล์ เอาพื้นลงฐาน',
+      est: 'ประมาณเส้นพลาสติก', notes: 'ผนัง 4 ชั้น · อินฟิล 12% · ไม่ต้องซัพพอร์ต',
+      deep: 'ระดับน้ำ', trough: 'ร่องลึก'
+    },
+    dlOk: 'บันทึกแล้ว — พิมพ์ชิ้น A แบบคว่ำ',
+    dlNo: 'ดาวน์โหลดไม่พร้อมใช้งานในหน้านี้',
+    dlFail: 'บันทึกไม่สำเร็จ: '
+  }
+};
+var lang = 'en', T = STR.en;
+
+/* ----------------------------------------------------------------- state */
+var S = {
+  bowlD: 130, bowlDepth: 45, holderW: 174, rimHeight: 89, moatGap: 11,
+  wall: 3.5, nSuper: 4, trayH: 16, handles: true, handleLen: 80, handleH: 26,
+  pname: 'โมจิ', nfont: 'Kanit', nstyle: 'raised', nameSize: 8, emboss: 0.8,
+  nLayout: 'curved', nTheta: -Math.PI / 2, nR: null, nRot: 0,
+  dOn: false, dStyle: 'raised', dSize: 10, dRot: 0, dTheta: 0, dR: null,
+  dLayout: 'flat', dCombine: true, dPos: 'left',
+  bed: 256, view: 'all', showBowl: true, showWater: true
+};
+var PRESETS = [
+  {bowlD: 110, bowlDepth: 38, holderW: 150, rimHeight: 78, handleLen: 62, handleH: 22, nameSize: 7},
+  {bowlD: 130, bowlDepth: 45, holderW: 174, rimHeight: 89, handleLen: 80, handleH: 26, nameSize: 8},
+  {bowlD: 150, bowlDepth: 52, holderW: 198, rimHeight: 105, handleLen: 90, handleH: 28, nameSize: 9},
+  {bowlD: 180, bowlDepth: 60, holderW: 236, rimHeight: 128, handleLen: 104, handleH: 32, nameSize: 11}
+];
+var $ = function (id) { return document.getElementById(id); };
+
+/* ------------------------------------------------------------- webgl bit */
+var gl = null, prog = null, U = {}, objs = {};
+var cam = {yaw: -1.15, pitch: 0.36, dist: 380, tz: 45, zoom: 1, base: 380};
+
+function mul(a, b) {
+  var o = new Float32Array(16), i, j, k;
+  for (i = 0; i < 4; i++) for (j = 0; j < 4; j++) {
+    var s = 0; for (k = 0; k < 4; k++) s += a[k * 4 + j] * b[i * 4 + k];
+    o[i * 4 + j] = s;
+  }
+  return o;
+}
+function perspective(f, asp, n, fa) {
+  var t = 1 / Math.tan(f / 2);
+  return new Float32Array([t / asp, 0, 0, 0, 0, t, 0, 0, 0, 0, (fa + n) / (n - fa), -1, 0, 0, 2 * fa * n / (n - fa), 0]);
+}
+var FOV = 0.62;
+/* Eye and camera axes. viewMat draws with these and camRay picks with them,
+   so a pick can never land somewhere the render did not put the pixel. */
+function camBasis(dist) {
+  var cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+  var cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  var e = [dist * cp * cy, dist * cp * sy, dist * sp + cam.tz];
+  var z = [e[0], e[1], e[2] - cam.tz], L = Math.hypot(z[0], z[1], z[2]) || 1;
+  z = [z[0] / L, z[1] / L, z[2] / L];
+  var x = [-z[1], z[0], 0];                    // up is +Z, so up × z reduces to this
+  L = Math.hypot(x[0], x[1], x[2]) || 1; x = [x[0] / L, x[1] / L, x[2] / L];
+  var y = [z[1] * x[2] - z[2] * x[1], z[2] * x[0] - z[0] * x[2], z[0] * x[1] - z[1] * x[0]];
+  return {e: e, x: x, y: y, z: z};
+}
+/* Narrow windows pull the camera back so the model still fits. */
+function effDist(asp) { return cam.dist * (asp < 1.25 ? 1.25 / Math.max(asp, 0.4) : 1); }
+function viewMat(dist) {
+  var b = camBasis(dist), x = b.x, y = b.y, z = b.z, e = b.e;
+  return new Float32Array([
+    x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0,
+    -(x[0] * e[0] + x[1] * e[1] + x[2] * e[2]),
+    -(y[0] * e[0] + y[1] * e[1] + y[2] * e[2]),
+    -(z[0] * e[0] + z[1] * e[1] + z[2] * e[2]), 1
+  ]);
+}
+
+var VS = '#version 300 es\nin vec3 aPos;uniform mat4 uP,uV;out vec3 vP;\
+void main(){vec4 p=uV*vec4(aPos,1.0);vP=p.xyz;gl_Position=uP*p;}';
+var FS = '#version 300 es\nprecision highp float;in vec3 vP;uniform vec3 uC;uniform float uS,uA;out vec4 o;\
+void main(){vec3 n=normalize(cross(dFdx(vP),dFdy(vP)));vec3 v=normalize(-vP);if(dot(n,v)<0.0)n=-n;\
+vec3 l1=normalize(vec3(-0.35,0.55,0.75)),l2=normalize(vec3(0.7,-0.4,0.2));\
+float d=max(dot(n,l1),0.0)*0.82+max(dot(n,l2),0.0)*0.22;\
+vec3 h=normalize(l1+v);float s=pow(max(dot(n,h),0.0),uS)*0.4;\
+float f=pow(1.0-max(dot(n,v),0.0),3.0)*0.16;\
+o=vec4(uC*(0.24+d)+vec3(s+f),uA);}';
+
+function initGL(cv) {
+  gl = cv.getContext('webgl2', {antialias: true, alpha: false, depth: true});
+  if (!gl) return false;
+  function sh(t, src) {
+    var s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS));
+  gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+  gl.bindAttribLocation(prog, 0, 'aPos');
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+  U.P = gl.getUniformLocation(prog, 'uP'); U.V = gl.getUniformLocation(prog, 'uV');
+  U.C = gl.getUniformLocation(prog, 'uC'); U.S = gl.getUniformLocation(prog, 'uS');
+  U.A = gl.getUniformLocation(prog, 'uA');
+  gl.enable(gl.DEPTH_TEST);
+  gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
+  return true;
+}
+
+function upload(key, mesh) {
+  var o = objs[key];
+  if (!o) { o = objs[key] = {vao: gl.createVertexArray(), vb: gl.createBuffer(), ib: gl.createBuffer()}; }
+  gl.bindVertexArray(o.vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, o.vb);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.p), gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, o.ib);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(mesh.f), gl.DYNAMIC_DRAW);
+  gl.bindVertexArray(null);
+  o.n = mesh.f.length;
+}
+
+var colCache = {}, colProbe = null;
+function css(v) {
+  if (colCache[v]) return colCache[v];
+  if (!colProbe) colProbe = document.createElement('canvas').getContext('2d');
+  colProbe.fillStyle = '#000';
+  colProbe.fillStyle = getComputedStyle(document.body).getPropertyValue(v).trim();
+  var c = colProbe.fillStyle;
+  return (colCache[v] = [parseInt(c.slice(1, 3), 16) / 255,
+                         parseInt(c.slice(3, 5), 16) / 255,
+                         parseInt(c.slice(5, 7), 16) / 255]);
+}
+
+function draw() {
+  if (!gl) return;
+  var cv = gl.canvas, dpr = Math.min(devicePixelRatio || 1, 2);
+  var w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  gl.viewport(0, 0, w, h);
+  var bg = css('--well');
+  gl.clearColor(bg[0], bg[1], bg[2], 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(prog);
+  var asp = w / h;
+  gl.uniformMatrix4fv(U.P, false, perspective(FOV, asp, 20, 4000));
+  gl.uniformMatrix4fv(U.V, false, viewMat(effDist(asp)));
+  var order = [
+    ['tray', '--tray-mat', 26, S.view !== 'body'],
+    ['body', '--body-mat', 44, S.view !== 'tray'],
+    ['name', '--name-mat', 60, S.view !== 'tray'],
+    ['decal', '--name-mat', 60, S.view !== 'tray'],
+    ['nameInlay', '--inlay-mat', 60, S.view !== 'tray'],
+    ['decalInlay', '--inlay-mat', 60, S.view !== 'tray'],
+    ['bowl', '--steel', 90, S.showBowl && S.view !== 'tray'],
+    ['water', '--accent', 70, S.showWater && S.view !== 'body']
+  ];
+  /* At a relief depth of 0 the artwork's top face is exactly coplanar with the
+     rim, which z-fights. A depth bias lets the art win without moving it — the
+     exported geometry stays flush, only the raster order changes. */
+  var artKey = {name: 1, decal: 1, nameInlay: 1, decalInlay: 1};
+  gl.polygonOffset(-1, -1);
+  for (var i = 0; i < order.length; i++) {
+    var k = order[i][0], o = objs[k];
+    if (!o || !o.n || !order[i][3]) continue;
+    if (artKey[k]) gl.enable(gl.POLYGON_OFFSET_FILL); else gl.disable(gl.POLYGON_OFFSET_FILL);
+    gl.uniform3fv(U.C, css(order[i][1]));
+    gl.uniform1f(U.S, order[i][2]);
+    gl.uniform1f(U.A, 1);
+    gl.bindVertexArray(o.vao);
+    gl.drawElements(gl.TRIANGLES, o.n, gl.UNSIGNED_INT, 0);
+  }
+  gl.disable(gl.POLYGON_OFFSET_FILL);
+  gl.bindVertexArray(null);
+}
+
+/* ------------------------------------------------------------- extra art */
+function bowlMesh(P) {
+  var m = new G.Mesh(), N = 96, i, t;
+  var rim = P.bowlD / 2, dep = P.bowlDep, k = P.taper, th = 1.2;
+  var prof = [
+    {a: rim, z: 0}, {a: rim - k * dep, z: -dep},
+    {a: rim - k * dep - th, z: -dep + th}, {a: rim - th, z: -0.6}
+  ];
+  var M = prof.length;
+  for (i = 0; i < N; i++) {
+    t = Math.PI * 2 * i / N;
+    for (var j = 0; j < M; j++) m.v(prof[j].a * Math.cos(t), prof[j].a * Math.sin(t), prof[j].z);
+  }
+  var id = function (a, b) { return (a % N) * M + b; };
+  for (i = 0; i < N; i++) for (var j2 = 0; j2 < M; j2++) {
+    var q = (j2 + 1) % M;
+    m.quad(id(i, j2), id(i + 1, j2), id(i + 1, q), id(i, q));
+  }
+  if (G.signedVolume(m) < 0) for (i = 0; i < m.f.length; i += 3) { var x = m.f[i + 1]; m.f[i + 1] = m.f[i + 2]; m.f[i + 2] = x; }
+  return m;
+}
+
+function waterMesh(P, depth) {
+  var m = new G.Mesh(), N = 128, i;
+  var ro = P.trayOutA - P.trayWall - 0.3, ri = P.pedOutA + 0.3;
+  var z0 = P.trayFloor - P.pedTopZ, z1 = z0 + depth;
+  var n = P.n;
+  var sr = function (a, t) { return a / Math.pow(Math.pow(Math.abs(Math.cos(t)), n) + Math.pow(Math.abs(Math.sin(t)), n), 1 / n); };
+  for (i = 0; i < N; i++) {
+    var t = Math.PI * 2 * i / N;
+    var a = sr(ri, t), b = sr(ro, t);
+    m.v(a * Math.cos(t), a * Math.sin(t), z0); m.v(b * Math.cos(t), b * Math.sin(t), z0);
+    m.v(a * Math.cos(t), a * Math.sin(t), z1); m.v(b * Math.cos(t), b * Math.sin(t), z1);
+  }
+  var id = function (a, b) { return (a % N) * 4 + b; };
+  for (i = 0; i < N; i++) {
+    m.quad(id(i, 2), id(i + 1, 2), id(i + 1, 3), id(i, 3));   // top
+    m.quad(id(i, 1), id(i + 1, 1), id(i + 1, 3), id(i, 3));   // outer
+    m.quad(id(i, 0), id(i, 2), id(i + 1, 2), id(i + 1, 0));   // inner
+  }
+  return m;
+}
+
+/* ------------------------------------------------------------ name plate */
+var nameCv = document.createElement('canvas');
+function rasterName(text, font, targetH) {
+  var big = 220, pad = 60;
+  var ctx = nameCv.getContext('2d', {willReadFrequently: true});
+  var f = '600 ' + big + 'px "' + font + '", "IBM Plex Sans Thai", sans-serif';
+  ctx.font = f;
+  var w = Math.ceil(ctx.measureText(text).width) + pad * 2;
+  nameCv.width = Math.max(w, 40); nameCv.height = big * 2.2;
+  ctx = nameCv.getContext('2d', {willReadFrequently: true});
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, nameCv.width, nameCv.height);
+  ctx.font = f; ctx.fillStyle = '#fff'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(text, pad, big * 1.45);
+  var d = ctx.getImageData(0, 0, nameCv.width, nameCv.height).data;
+  var x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1, x, y;
+  for (y = 0; y < nameCv.height; y++) for (x = 0; x < nameCv.width; x++) {
+    if (d[(y * nameCv.width + x) * 4] > 120) {
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < 0) return null;
+  var sw = x1 - x0 + 1, sh = y1 - y0 + 1;
+  var H = targetH, W = Math.max(2, Math.round(sw / sh * H));
+  var mask = new Uint8Array(W * H);
+  for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+    var sx = x0 + Math.floor((x + 0.5) * sw / W), sy = y0 + Math.floor((y + 0.5) * sh / H);
+    mask[y * W + x] = d[(sy * nameCv.width + sx) * 4] > 120 ? 1 : 0;
+  }
+  return {mask: mask, W: W, H: H, aspect: sw / sh};
+}
+
+/* ------------------------------------------------------------ svg logo */
+/* SVG -> binary mask. The file is drawn through an <img>, never injected into
+   the page, so any script inside it stays inert. The threshold is on ALPHA,
+   not luminance: logo art is coloured on a transparent ground, and the name
+   engraver's luminance test would throw most of it away. */
+function rasterSVG(svgText, targetH, rotDeg) {
+  return new Promise(function (resolve, reject) {
+    var url = URL.createObjectURL(new Blob([svgText], {type: 'image/svg+xml'}));
+    var img = new Image();
+    var done = function (fn, arg) { URL.revokeObjectURL(url); fn(arg); };
+    img.onerror = function () { done(reject, new Error('unreadable')); };
+    img.onload = function () {
+      var big = 512;
+      var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+      if (!iw || !ih) { iw = big; ih = big; }
+      var sc = big / Math.max(iw, ih);
+      var dw = Math.max(1, Math.round(iw * sc)), dh = Math.max(1, Math.round(ih * sc));
+      var rad = (rotDeg || 0) * Math.PI / 180;
+      var ca = Math.abs(Math.cos(rad)), sa = Math.abs(Math.sin(rad));
+      var CW = Math.ceil(dw * ca + dh * sa), CH = Math.ceil(dw * sa + dh * ca);
+      var cv = document.createElement('canvas');
+      cv.width = CW; cv.height = CH;
+      var ctx = cv.getContext('2d', {willReadFrequently: true});
+      ctx.translate(CW / 2, CH / 2); ctx.rotate(rad);
+      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+      var d;
+      try { d = ctx.getImageData(0, 0, CW, CH).data; }
+      catch (err) { done(reject, new Error('tainted')); return; }   // external ref
+      var x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1, x, y;
+      for (y = 0; y < CH; y++) for (x = 0; x < CW; x++) {
+        if (d[(y * CW + x) * 4 + 3] > 128) {
+          if (x < x0) x0 = x; if (x > x1) x1 = x;
+          if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+      }
+      if (x1 < 0) { done(resolve, null); return; }                  // nothing opaque
+      var sw = x1 - x0 + 1, sh = y1 - y0 + 1;
+      var H = targetH, W = Math.max(2, Math.round(sw / sh * H));
+      var mask = new Uint8Array(W * H);
+      for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+        var sx = x0 + Math.floor((x + 0.5) * sw / W), sy = y0 + Math.floor((y + 0.5) * sh / H);
+        mask[y * W + x] = d[(sy * CW + sx) * 4 + 3] > 128 ? 1 : 0;
+      }
+      done(resolve, {mask: mask, W: W, H: H, aspect: sw / sh});
+    };
+    // viewBox-only files have no intrinsic size and would rasterise at 0x0
+    var vb = /viewBox\s*=\s*["']\s*[-\d.eE+]+[\s,]+[-\d.eE+]+[\s,]+([-\d.eE+]+)[\s,]+([-\d.eE+]+)/.exec(svgText);
+    if (vb) {
+      var vw = parseFloat(vb[1]), vh = parseFloat(vb[2]);
+      if (vw > 0 && vh > 0) {
+        var s0 = 512 / Math.max(vw, vh);
+        img.width = Math.max(1, Math.round(vw * s0));
+        img.height = Math.max(1, Math.round(vh * s0));
+      }
+    }
+    img.src = url;
+  });
+}
+
+/* ------------------------------------------------------------ zip writer */
+var CRCT = (function () {
+  var t = new Uint32Array(256), c, n, k;
+  for (n = 0; n < 256; n++) { c = n; for (k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t;
+})();
+function crc32(u8) {
+  var c = 0xFFFFFFFF;
+  for (var i = 0; i < u8.length; i++) c = CRCT[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function zip(files) {
+  var parts = [], central = [], off = 0, i;
+  var enc = new TextEncoder();
+  for (i = 0; i < files.length; i++) {
+    var nm = enc.encode(files[i].name), da = files[i].data, cr = crc32(da);
+    var lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0, true);
+    lh.setUint16(8, 0, true); lh.setUint16(10, 0, true); lh.setUint16(12, 0, true);
+    lh.setUint32(14, cr, true); lh.setUint32(18, da.length, true); lh.setUint32(22, da.length, true);
+    lh.setUint16(26, nm.length, true); lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), nm, da);
+    var ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+    ch.setUint32(16, cr, true); ch.setUint32(20, da.length, true); ch.setUint32(24, da.length, true);
+    ch.setUint16(28, nm.length, true); ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), nm);
+    off += 30 + nm.length + da.length;
+  }
+  var cs = 0;
+  for (i = 0; i < central.length; i++) cs += central[i].length;
+  var eo = new DataView(new ArrayBuffer(22));
+  eo.setUint32(0, 0x06054b50, true);
+  eo.setUint16(8, files.length, true); eo.setUint16(10, files.length, true);
+  eo.setUint32(12, cs, true); eo.setUint32(16, off, true);
+  return new Blob(parts.concat(central, [new Uint8Array(eo.buffer)]), {type: 'application/zip'});
+}
+
+/* ---------------------------------------------------------------- build */
+var P = null, warnings = [], lastName = null, buildTimer = null, seatShrunk = false;
+var lastDecal = null, decalSrc = null, decalFile = '';
+var nameFoot = null, decalFoot = null, decalShrunk = false, decalThin = 0, decalNote = null;
+var artDropped = false;              // place() found no room at all and returned null
+var comboCache = null, rectCache = [], decalBakedRot = 0;
+
+/* Intent vs fact. willCombine() deliberately does NOT read lastDecal, so it is
+   safe to call from inside the rasteriser that is about to produce lastDecal —
+   on a first SVG load lastDecal is still null and a combined()-based rule would
+   bake the wrong rotation and only agree with itself on the second load. */
+function willCombine() { return S.dCombine && !!decalSrc && !!lastName && !!S.pname.trim(); }
+function combined() { return willCombine() && S.dOn && !!lastDecal; }
+
+/* The merged badge raster, memoised. refreshArt() runs on every pointermove
+   frame, and mergeArt + artRects per frame would eat the budget. rebuildName
+   and rebuildDecal always assign a FRESH object, so object identity already
+   encodes text, font, SVG source and baked rotation — nothing to invalidate by
+   hand. Style, layout, rotation and position are absent from the key on
+   purpose: they are consumed downstream, so the whole drag path is a hit. */
+function comboRaster() {
+  var c = comboCache;
+  if (c && c.n === lastName && c.d === lastDecal &&
+      c.nm === S.nameSize && c.dm === S.dSize && c.p === S.dPos) return c.r;
+  var r = G.mergeArt(lastName, S.nameSize, lastDecal, S.dSize, S.dPos);
+  comboCache = {n: lastName, d: lastDecal, nm: S.nameSize, dm: S.dSize, p: S.dPos, r: r};
+  return r;
+}
+
+function seArea(a, n) {                      // area of a superellipse, numerically
+  var s = 0, N = 512;
+  for (var i = 0; i < N; i++) {
+    var t = Math.PI * 2 * i / N;
+    var r = a / Math.pow(Math.pow(Math.abs(Math.cos(t)), n) + Math.pow(Math.abs(Math.sin(t)), n), 1 / n);
+    s += r * r;
+  }
+  return 0.5 * s * (Math.PI * 2 / N);
+}
+
+/* Rect field for one piece of artwork, plus how much larger the padded
+   recessed plaque is than the artwork itself. Shared by the name and the
+   logo, in both layouts. */
+/* Two slots: an uncombined frame asks twice (name, logo), so a single slot
+   would thrash to a 0 % hit rate. Safe to share the result — curvedPlace and
+   flatPlace copy rects/inlay by reference and artMesh only reads them. */
+function artRects(raster, style) {
+  for (var i = 0; i < rectCache.length; i++)
+    if (rectCache[i].r === raster && rectCache[i].s === style) return rectCache[i].v;
+  var v = artRectsCompute(raster, style);
+  rectCache.unshift({r: raster, s: style, v: v});
+  if (rectCache.length > 2) rectCache.length = 2;
+  return v;
+}
+
+function artRectsCompute(raster, style) {
+  if (style === 'raised')
+    return {rects: G.nameRects(raster.mask, raster.W, raster.H, 'raised', 0, 0), sx: 1, sy: 1};
+  /* 'recessed' and 'inlay' are the two halves of one padded grid: the plaque
+     is the artwork's complement inside it. Recessed ships only the plaque and
+     leaves the letters as open gaps; inlay keeps BOTH halves, so they tile the
+     same footprint with no overlap and no gap and their top faces land at the
+     same z. That exactness is the whole feature — the inlay has to drop into
+     the plaque without a boolean anywhere. */
+  /* padRef lets a merged badge keep a border proportional to its LETTERING.
+     Without it a stacked badge's 147 rows give a 5.7 mm border and push sy from
+     1.22 to 1.56 — the difference between a usable badge and a 2.5 mm name.
+     Undefined on a plain name/logo raster, so those paths are unchanged. */
+  var ref = raster.padRef || raster.H;
+  var pad = Math.round(ref * 0.28), rad = Math.round(ref * 0.3);
+  var W2 = raster.W + pad * 2, H2 = raster.H + pad * 2;
+  var m2 = new Uint8Array(W2 * H2);
+  for (var y = 0; y < raster.H; y++) for (var x = 0; x < raster.W; x++)
+    m2[(y + pad) * W2 + x + pad] = raster.mask[y * raster.W + x];
+  return {rects: G.nameRects(m2, W2, H2, 'recessed', 1, rad),
+          inlay: style === 'inlay' ? G.nameRects(m2, W2, H2, 'raised', 0, 0) : null,
+          sx: W2 / raster.W, sy: H2 / raster.H};
+}
+
+function ringMid(Pp) { return (Pp.seatOpenR + Pp.shellA - Pp.topFill) / 2; }
+
+/* Curved layout: the artwork wraps round the rim as an arc band. */
+function curvedPlace(Pp, raster, style, sizeMM, theta, radius) {
+  var flatOuter = Pp.shellA - Pp.topFill;
+  var room = flatOuter - Pp.seatOpenR - 3;
+  if (room < 3) return null;
+  var a = artRects(raster, style);
+  var bandW = Math.min(sizeMM, room / a.sy);
+  var mid = ringMid(Pp);
+  /* The radial clamp above used to shrink the artwork silently — only the arc
+     clamp set the flag, so a default recessed name was quietly rendered at
+     6.4 mm with nothing said. Both report now, and `why` says which. */
+  var arc = bandW * raster.aspect, shrunk = bandW < sizeMM - 1e-9, why = shrunk ? 'radial' : '';
+  var maxArc = Math.PI * 2 * mid * 0.55;
+  if (arc > maxArc) { bandW *= maxArc / arc; arc = maxArc; shrunk = true; why = 'arc'; }
+  var bw = bandW * a.sy, ar = arc * a.sx;
+  var lo = Pp.seatOpenR + bw / 2 + 1, hi = flatOuter - bw / 2 - 0.5;
+  var bandR = (radius === null || lo > hi) ? mid : Math.max(lo, Math.min(hi, radius));
+  return {kind: 'arc', rects: a.rects, inlay: a.inlay, thetaC: theta, bandR: bandR, bw: bw, ar: ar,
+          sizeMM: bandW, shrunk: shrunk, why: why};
+}
+
+/* Flat layout: the artwork lies on the top face undistorted. It can only
+   shrink to fit — the face is an annulus, so a straight rectangle runs out of
+   room long before an arc band does. */
+function flatPlace(Pp, raster, style, sizeMM, theta, radius, userRot) {
+  var a = artRects(raster, style);
+  var rot = theta + userRot;
+  var r = radius === null ? ringMid(Pp) : radius;
+  var cx = r * Math.cos(theta), cy = r * Math.sin(theta);
+  var h0 = sizeMM * a.sy, w0 = sizeMM * raster.aspect * a.sx;
+  var f = 1, shrunk = false;
+  if (!G.fitsTop(Pp, cx, cy, w0, h0, rot, 1)) {
+    var lo = 0, hi = 1, i;
+    for (i = 0; i < 16; i++) {
+      var mid = (lo + hi) / 2;
+      if (G.fitsTop(Pp, cx, cy, w0 * mid, h0 * mid, rot, 1)) lo = mid; else hi = mid;
+    }
+    f = lo; shrunk = true;
+    if (f < 0.05) return null;                 // nowhere near enough room here
+  }
+  return {kind: 'flat', rects: a.rects, inlay: a.inlay, cx: cx, cy: cy,
+          w: w0 * f, h: h0 * f, rot: rot, sizeMM: sizeMM * f, shrunk: shrunk,
+          why: shrunk ? 'flat' : ''};
+}
+
+function place(Pp, raster, layout, style, sizeMM, theta, radius, userRot) {
+  return layout === 'flat'
+    ? flatPlace(Pp, raster, style, sizeMM, theta, radius, userRot)
+    : curvedPlace(Pp, raster, style, sizeMM, theta, radius);
+}
+
+function artMesh(Pp, pl, rects) {
+  var R = rects || pl.rects;
+  return pl.kind === 'flat'
+    ? G.flatMesh(Pp, R, {cx: pl.cx, cy: pl.cy, w: pl.w, h: pl.h, rot: pl.rot, emboss: S.emboss})
+    : G.nameMesh(Pp, R, {bandR: pl.bandR, bandW: pl.bw, arcLen: pl.ar,
+                         thetaC: pl.thetaC, emboss: S.emboss});
+}
+
+/* Plaque plus, for the inlay style, the artwork that fills its gaps. Both go
+   through artMesh with the identical placement, which is what guarantees the
+   two halves stay registered however the user drags or rotates the piece. */
+function artPair(Pp, pl) {
+  return {m: artMesh(Pp, pl), inlay: pl.inlay ? artMesh(Pp, pl, pl.inlay) : null};
+}
+
+/* When combined this builds the WHOLE badge — name and logo on one plaque, one
+   placement, one relief. decalGeometry then stands down, which is also what
+   collapses the drag targeting and the overlap warning (see below). */
+function nameGeometry(Pp, seg) {
+  seatShrunk = false; nameFoot = null;
+  var comb = combined();
+  if (comb) decalThin = 0;
+  var art = comb ? comboRaster() : ((S.pname.trim() && lastName) ? lastName : null);
+  if (!art) return null;
+  var pl = place(Pp, art, S.nLayout, S.nstyle, comb ? art.heightMM : S.nameSize,
+                 S.nTheta, S.nR, S.nRot * Math.PI / 180);
+  if (!pl) { artDropped = true; return null; }
+  seatShrunk = pl.shrunk;
+  nameFoot = pl;
+  if (comb) {
+    /* The logo rides the badge, so it inherits the badge's shrink. Audit it at
+       its OWN native 72 rows against the mm it actually lands at — more detail
+       than the merged grid, and it measures the artwork the user can go and
+       fix. Using blocks.b.h rather than S.dSize absorbs the block rounding and
+       any resolution cap. Uncombined, this reduces to the original call. */
+    var logoMM = art.blocks.b.h * (pl.sizeMM / art.H);
+    decalThin = thinFraction(lastDecal.mask, lastDecal.W, lastDecal.H,
+                             logoMM / lastDecal.H, 0.8);
+  }
+  return artPair(Pp, pl);
+}
+
+/* Chamfer 3-4 distance to the nearest seed pixel, in thirds of a pixel. */
+function distTo(seed, W, H) {
+  var N = W * H, d = new Int32Array(N), INF = 1 << 28, i, x, y;
+  for (i = 0; i < N; i++) d[i] = seed[i] ? 0 : INF;
+  var at = function (xx, yy) { return (xx < 0 || yy < 0 || xx >= W || yy >= H) ? INF : d[yy * W + xx]; };
+  for (y = 0; y < H; y++) for (x = 0; x < W; x++)
+    d[y * W + x] = Math.min(d[y * W + x], at(x - 1, y) + 3, at(x, y - 1) + 3, at(x - 1, y - 1) + 4, at(x + 1, y - 1) + 4);
+  for (y = H - 1; y >= 0; y--) for (x = W - 1; x >= 0; x--)
+    d[y * W + x] = Math.min(d[y * W + x], at(x + 1, y) + 3, at(x, y + 1) + 3, at(x + 1, y + 1) + 4, at(x - 1, y + 1) + 4);
+  return d;
+}
+
+/* How much of the artwork a 0.4 mm nozzle would simply drop, as a fraction of
+   its area. This is a morphological opening: erode by the minimum printable
+   radius, dilate back, and whatever does not return was too fine to print.
+   A plain "thinnest feature" number cannot do this job — every curved edge
+   decomposes into one-pixel slivers, and a hairline hanging off a thick blob
+   hides behind the thick part. Opening sees both. */
+function thinFraction(mask, W, H, mmPerPx, minMM) {
+  var r = (minMM / 2) / mmPerPx;                       // inscribed radius needed, px
+  if (!(r > 0) || !isFinite(r)) return 0;
+  var PW = W + 4, PH = H + 4, N = PW * PH, i, x, y;
+  var art = new Uint8Array(N), bg = new Uint8Array(N), total = 0;
+  for (y = 0; y < H; y++) for (x = 0; x < W; x++)
+    if (mask[y * W + x]) { art[(y + 2) * PW + x + 2] = 1; total++; }
+  if (!total) return 0;
+  for (i = 0; i < N; i++) bg[i] = art[i] ? 0 : 1;      // pad ring counts as outside
+  var din = distTo(bg, PW, PH), core = new Uint8Array(N), any = 0;
+  for (i = 0; i < N; i++) if (art[i] && din[i] >= r * 3) { core[i] = 1; any = 1; }
+  if (!any) return 1;
+  var dout = distTo(core, PW, PH), lost = 0;
+  for (i = 0; i < N; i++) if (art[i] && dout[i] > r * 3) lost++;
+  return lost / total;
+}
+
+function decalGeometry(Pp) {
+  decalShrunk = false; decalFoot = null;
+  /* ORDER: nameGeometry must run first. When combined it owns decalThin and
+     leaves decalFoot null, and that null is what makes clash() return false and
+     pickItem() fall through to the name branch — so the badge drags as one
+     object with no changes to either of them. */
+  if (combined()) return null;
+  decalThin = 0;
+  if (!S.dOn || !lastDecal) return null;
+  var pl = place(Pp, lastDecal, S.dLayout, S.dStyle, S.dSize, S.dTheta, S.dR, S.dRot * Math.PI / 180);
+  if (!pl) { artDropped = true; return null; }
+  decalShrunk = pl.shrunk;
+  decalThin = thinFraction(lastDecal.mask, lastDecal.W, lastDecal.H,
+                           pl.sizeMM / lastDecal.H, 0.8);
+  decalFoot = pl;
+  return artPair(Pp, pl);
+}
+
+function wrapPi(a) {
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
+}
+
+/* Corners of a footprint of either kind. An arc band is approximated by its
+   tangential rectangle; that is rough for a band wrapping a long way round,
+   but this only drives an advisory warning. */
+function footCorners(f) {
+  return f.kind === 'flat'
+    ? G.flatCorners(f.cx, f.cy, f.w, f.h, f.rot)
+    : G.flatCorners(f.bandR * Math.cos(f.thetaC), f.bandR * Math.sin(f.thetaC),
+                    f.ar, f.bw, f.thetaC);
+}
+
+/* Separating-axis test between two convex quads. */
+function quadsOverlap(A, B) {
+  var polys = [A, B], i, j, k;
+  for (i = 0; i < 2; i++) {
+    var poly = polys[i];
+    for (j = 0; j < 4; j++) {
+      var p = poly[j], q = poly[(j + 1) % 4];
+      var ax = -(q[1] - p[1]), ay = q[0] - p[0];       // edge normal
+      var aLo = Infinity, aHi = -Infinity, bLo = Infinity, bHi = -Infinity;
+      for (k = 0; k < 4; k++) {
+        var da = A[k][0] * ax + A[k][1] * ay;
+        var db = B[k][0] * ax + B[k][1] * ay;
+        if (da < aLo) aLo = da; if (da > aHi) aHi = da;
+        if (db < bLo) bLo = db; if (db > bHi) bHi = db;
+      }
+      if (aHi < bLo || bHi < aLo) return false;        // a gap: no overlap
+    }
+  }
+  return true;
+}
+
+/* Two pieces of artwork that would fuse into one shape when sliced. */
+function clash(a, b) {
+  if (!a || !b) return false;
+  return quadsOverlap(footCorners(a), footCorners(b));
+}
+
+function build(seg, withExtras) {
+  P = G.derive(S);
+  artDropped = false;
+  warnings = G.validate(P);
+  var body = G.buildBody(P, seg), tray = G.buildTray(P, seg);
+  var name = nameGeometry(P, seg);
+  var decal = decalGeometry(P);
+  return {body: body, tray: tray, name: name, decal: decal};
+}
+
+/* Upload one artwork pair, blanking whichever half is not there. The inlay
+   rides its own buffer so the viewer can paint it in the second filament. */
+function putArt(key, pair, dz) {
+  var ik = key + 'Inlay';
+  if (pair) upload(key, shiftZ(pair.m, dz)); else if (objs[key]) objs[key].n = 0;
+  if (pair && pair.inlay) upload(ik, shiftZ(pair.inlay, dz));
+  else if (objs[ik]) objs[ik].n = 0;
+}
+
+function shiftZ(m, dz) {
+  var o = {p: m.p.slice(), f: m.f};
+  for (var i = 2; i < o.p.length; i += 3) o.p[i] += dz;
+  return o;
+}
+
+/* Drag path: re-sweep just the artwork. A full build() is ~40k triangles and
+   makes the drag stutter; name and logo are a few hundred boxes each. */
+function refreshArt() {
+  if (!P) return;
+  artDropped = false;
+  var n = nameGeometry(P), d = decalGeometry(P);
+  if (!gl) return;
+  putArt('name', n, P.pedTopZ);
+  putArt('decal', d, P.pedTopZ);
+  draw();
+}
+
+function refresh(quick) {
+  var t0 = performance.now();
+  var r = build(quick ? 256 : 512);
+  if (gl) {
+    var shift = shiftZ;
+    upload('body', shift(r.body, P.pedTopZ));
+    upload('tray', {p: r.tray.p, f: r.tray.f});
+    putArt('name', r.name, P.pedTopZ);
+    putArt('decal', r.decal, P.pedTopZ);
+    var bm = bowlMesh(P);
+    upload('bowl', shift(bm, P.pedTopZ + P.seatLipZ + P.drop));
+    upload('water', shift(waterMesh(P, G.fillDepth(P)), P.pedTopZ));
+    cam.tz = (P.pedTopZ + P.bodyH) * 0.42;
+    cam.base = Math.max(S.holderW, P.pedTopZ + P.bodyH + 50) * 1.95;
+    cam.dist = cam.base * cam.zoom;
+    draw();
+  }
+  paintStats(r);
+  return performance.now() - t0;
+}
+
+/* ---------------------------------------------------------------- stats */
+function vol(m) { return G.signedVolume(m) / 1000; }
+function fil(cm3) { return Math.round(cm3 * 0.55 * 1.27); }
+
+function paintStats(r) {
+  var bodyV = vol(r.body), trayV = vol(r.tray);
+  var w = S.holderW, tw = P.trayOutA * 2;
+  var total = P.pedTopZ + P.bodyH;
+  var gap = S.moatGap;
+  var gapFlag = gap >= 9 ? 'ok' : gap >= 7 ? 'warn' : 'crit';
+  var over = Math.max(w, tw) - S.bed;
+  var chips = [
+    ['stHolder', Math.round(w) + ' × ' + Math.round(total), 'mm', ''],
+    ['stRim', Math.round(S.rimHeight), 'mm', ''],
+    ['stGap', gap.toFixed(1), 'mm', 'flag-' + gapFlag],
+    ['stFil', '≈' + (fil(bodyV) + fil(trayV)), 'g', over > 0 ? 'flag-crit' : '']
+  ];
+  $('readout').innerHTML = chips.map(function (c) {
+    return '<div class="stat ' + c[3] + '"><b>' + T[c[0]] + '</b><span>' + c[1] + '<em>' + c[2] + '</em></span></div>';
+  }).join('');
+
+  var fd = G.fillDepth(P);
+  var moatCap = (seArea(P.trayOutA - P.trayWall, P.n) - seArea(P.pedOutA, P.n)) * fd / 1000;
+  var sp = T.spec;
+  var bedTxt = over > 0 ? sp.over.replace('{m}', Math.ceil(over)) : sp.fits.replace('{m}', Math.floor(-over));
+  var rows = [
+    [sp.a, Math.round(w) + ' × ' + Math.round(w) + ' × ' + Math.round(P.bodyH) + ' mm',
+     Math.round(bodyV) + ' cm³ · ' + sp.est + ' ≈ ' + fil(bodyV) + ' g'],
+    [sp.b, Math.round(tw) + ' × ' + Math.round(tw) + ' × ' + Math.round(P.lipTopZ) + ' mm',
+     Math.round(trayV) + ' cm³ · ' + sp.est + ' ≈ ' + fil(trayV) + ' g'],
+    [sp.moatCap, Math.round(moatCap) + ' ml', Math.round(fd) + ' mm ' + sp.deep + ' · ' + Math.round(P.trayH - P.trayFloor) + ' mm ' + sp.trough],
+    [sp.seat, 'Ø' + Math.round(P.seatOpenR * 2) + ' mm', 'Ø' + Math.round(P.seatLipR * 2) + ' mm seat lip'],
+    [sp.bed, bedTxt, S.bed + ' × ' + S.bed + ' mm'],
+    [sp.orient, 'A: ' + sp.aOri, 'B: ' + sp.bOri]
+  ];
+  $('spec').innerHTML = rows.map(function (r2) {
+    return '<div><dt>' + r2[0] + '</dt><dd>' + r2[1] + '</dd><dd><small>' + r2[2] + '</small></dd></div>';
+  }).join('');
+
+  var al = warnings.map(function (x) { return {c: 'crit', m: x.m}; });
+  if (over > 0) al.push({c: 'crit', m: 'Wider than the ' + S.bed + ' mm bed by ' + Math.ceil(over) + ' mm.'});
+  if (artDropped) al.push({c: 'crit', m: 'There is no room on the rim for the artwork at that size and position, so it was left off entirely. Make it smaller, or drag it somewhere wider.'});
+  if (seatShrunk && nameFoot) {
+    var what = combined() ? 'The badge' : 'The name';
+    al.push({c: 'warn', m:
+      nameFoot.why === 'flat'
+        ? what + ' was scaled down to fit the flat area — the top face curves away, so a straight block runs out of room. Drag it to a corner for more space.'
+      : nameFoot.why === 'arc'
+        ? what + ' was shortened to fit the rim — it now wraps just over half way round.'
+        : what + ' is taller than the ' + (P.shellA - P.topFill - P.seatOpenR).toFixed(0) + ' mm rim band, so the whole thing was scaled down.' +
+          (combined() && (S.dPos === 'above' || S.dPos === 'below')
+            ? ' Stacking the logo above or below adds both heights together — try Left or Right.'
+            : ' Lower the text or logo height.')});
+  }
+  if (S.nameSize < 6 && S.pname.trim()) al.push({c: 'warn', m: 'Under 6 mm tall, fine strokes may not print cleanly at 0.4 mm nozzle.'});
+  if (S.emboss < 0.2 && (S.pname.trim() || (S.dOn && lastDecal))) {
+    var flushStyle = combined() ? S.nstyle : (S.pname.trim() ? S.nstyle : S.dStyle);
+    al.push(flushStyle === 'inlay'
+      ? {c: 'ok', m: 'Dead flush with the rim — no bump at all. The artwork is still a separate solid in inlay.stl, so assigning it a second filament is what makes it visible. This is Flat inlay doing exactly what it is for.'}
+      : {c: 'warn', m: 'At this depth the artwork is level with the rim, so it merges into the holder and will not be visible at all. Switch the relief to Flat inlay to keep it as a flush second colour, or raise the depth above 0.2 mm.'});
+  }
+  if (decalNote) al.push({c: 'crit', m: decalNote});
+  if (decalShrunk) al.push({c: 'warn', m: S.dLayout === 'flat'
+    ? 'Logo scaled down to fit the flat area. The rim is widest at the corners — drag it there for more room.'
+    : 'Logo narrowed to fit the rim — it now wraps just over half way round.'});
+  if (decalThin > 0.015) al.push({c: 'warn', m: Math.round(decalThin * 100) +
+    '% of the logo is finer than 0.8 mm — a 0.4 mm nozzle will drop those parts. ' +
+    (combined() ? 'Raise Logo height (the name gives up room for it) or thicken the artwork.'
+                : 'Scale it up or thicken the artwork.')});
+  if (clash(nameFoot, decalFoot)) al.push({c: 'warn', m: 'The logo overlaps the name — they will fuse into one shape. Drag the logo clear of the front.'});
+  if (gap < 8) al.push({c: 'warn', m: gap.toFixed(1) + ' mm stops small house ants but a large carpenter ant could bridge it.'});
+  /* Once the badge is rim-limited the two sliders stop meaning millimetres and
+     start meaning a ratio — the total is pinned to the rim band. Show what each
+     piece actually lands at so that is legible instead of baffling. */
+  if (combined() && seatShrunk && nameFoot) {
+    var cr = comboRaster(), k = nameFoot.sizeMM / cr.heightMM;
+    $('o-nameSize').textContent = S.nameSize.toFixed(1) + ' → ' + (S.nameSize * k).toFixed(1) + ' mm';
+    $('o-dSize').textContent = S.dSize.toFixed(1) + ' → ' + (S.dSize * k).toFixed(1) + ' mm';
+  }
+  $('alerts').innerHTML = al.map(function (a) {
+    return '<div class="alert ' + a.c + '"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 4.6v4M8 11.2v.1"/><circle cx="8" cy="8" r="6.4"/></svg><span>' + a.m + '</span></div>';
+  }).join('');
+
+  $('n-moat').innerHTML = T.moatNote.replace('{g}', gap.toFixed(1));
+}
+
+/* ------------------------------------------------------------------ i18n */
+function applyLang() {
+  T = STR[lang];
+  document.documentElement.lang = lang === 'th' ? 'th' : 'en';
+  $('sub').textContent = T.sub;
+  $('save-t').textContent = T.save;
+  var map = {
+    'g-preset-t': 'preset', 'g-bowl-t': 'bowl', 'g-holder-t': 'holder', 'g-moat-t': 'moat',
+    'g-handle-t': 'handle', 'g-name-t': 'name', 'g-logo-t': 'logo', 'g-print-t': 'printer',
+    'l-bowlD': 'bowlD', 'l-bowlDepth': 'bowlDepth', 'l-holderW': 'holderW',
+    'l-rimHeight': 'rimHeight', 'l-wall': 'wall', 'l-nSuper': 'nSuper', 'l-moatGap': 'moatGap',
+    'l-trayH': 'trayH', 'l-handles': 'handles', 'l-handleLen': 'handleLen', 'l-handleH': 'handleH',
+    'l-pname': 'pname', 'l-nfont': 'nfont', 'l-nstyle': 'nstyle',
+    'l-nameSize': 'nameSize', 'l-emboss': 'emboss', 'l-bed': 'bed',
+    'l-dStyle': 'dStyle', 'l-dSize': 'dSize', 'l-dRot': 'dRot',
+    'l-dCombine': 'dCombine', 'l-dPos': 'dPos',
+    'l-nLayout': 'layout', 'l-dLayout': 'layout', 'l-nRot': 'nRot'
+  };
+  for (var k in map) if ($(k)) $(k).textContent = T[map[k]];
+  $('n-bowl').innerHTML = T.nBowl;
+  $('n-name').innerHTML = T.nName;
+  $('n-logo').innerHTML = T.nLogo;
+  $('ns-raised').textContent = T.raised;
+  $('ns-recessed').textContent = T.recessed;
+  $('ns-inlay').textContent = T.inlay;
+  $('d-drop-t').textContent = T.dDrop;
+  $('dclear').textContent = T.dClear;
+  $('ds-raised').textContent = T.dRaised;
+  $('ds-recessed').textContent = T.dRecessed;
+  $('ds-inlay').textContent = T.dInlay;
+  $('dp-left').textContent = T.pLeft;
+  $('dp-right').textContent = T.pRight;
+  $('dp-above').textContent = T.pAbove;
+  $('dp-below').textContent = T.pBelow;
+  $('nl-curved').textContent = T.curved; $('nl-flat').textContent = T.flat;
+  $('dl-curved').textContent = T.curved; $('dl-flat').textContent = T.flat;
+  $('v-all').textContent = T.vAll; $('v-body').textContent = T.vBody; $('v-tray').textContent = T.vTray;
+  $('v-bowl').textContent = T.vBowl; $('v-water').textContent = T.vWater;
+  $('presets').innerHTML = T.presets.map(function (p, i) {
+    return '<button data-i="' + i + '" aria-pressed="false">' + p + '</button>';
+  }).join('');
+  wirePresets();
+  Array.prototype.forEach.call($('presets').children, function (b) {
+    b.setAttribute('aria-pressed', String(PRESETS[+b.dataset.i].bowlD === S.bowlD &&
+                                          PRESETS[+b.dataset.i].holderW === S.holderW));
+  });
+  syncOutputs();
+  if (P) paintStats(build(256));
+}
+
+function syncOutputs() {
+  var f1 = function (v) { return v.toFixed(1); };
+  $('o-bowlD').textContent = S.bowlD + ' mm';
+  $('o-bowlDepth').textContent = S.bowlDepth + ' mm';
+  $('o-holderW').textContent = S.holderW + ' mm';
+  $('o-rimHeight').textContent = S.rimHeight + ' mm';
+  $('o-wall').textContent = f1(S.wall) + ' mm';
+  $('o-nSuper').textContent = T.shapeOf(S.nSuper);
+  $('o-moatGap').textContent = f1(S.moatGap) + ' mm';
+  $('o-trayH').textContent = S.trayH + ' mm';
+  $('o-handleLen').textContent = S.handleLen + ' mm';
+  $('o-handleH').textContent = S.handleH + ' mm';
+  $('o-nameSize').textContent = f1(S.nameSize) + ' mm';
+  $('o-emboss').textContent = f1(S.emboss) + ' mm';
+  $('o-dSize').textContent = f1(S.dSize) + ' mm';
+  $('o-dRot').textContent = Math.round(S.dRot) + '°';
+  $('o-nRot').textContent = Math.round(S.nRot) + '°';
+}
+
+/* ----------------------------------------------------------------- wiring */
+function wirePresets() {
+  Array.prototype.forEach.call($('presets').children, function (b) {
+    b.onclick = function () {
+      var p = PRESETS[+b.dataset.i];
+      for (var k in p) S[k] = p[k];
+      ['bowlD', 'bowlDepth', 'holderW', 'rimHeight', 'handleLen', 'handleH', 'nameSize'].forEach(function (k) {
+        $(k).value = S[k];
+      });
+      Array.prototype.forEach.call($('presets').children, function (x) { x.setAttribute('aria-pressed', x === b); });
+      syncOutputs(); schedule(false);
+    };
+  });
+}
+
+function schedule(quick) {
+  clearTimeout(buildTimer);
+  buildTimer = setTimeout(function () { refresh(quick); }, quick ? 16 : 60);
+}
+
+function slider(id, key, quick) {
+  var el = $(id);
+  el.value = S[key];
+  el.addEventListener('input', function () {
+    S[key] = parseFloat(el.value);
+    syncOutputs();
+    schedule(true);
+  });
+  el.addEventListener('change', function () { schedule(false); });
+}
+
+function pillGroup(id, key, after) {
+  var g = $(id);
+  Array.prototype.forEach.call(g.children, function (b) {
+    b.setAttribute('aria-pressed', b.dataset.v === S[key]);
+    b.onclick = function () {
+      S[key] = b.dataset.v;
+      Array.prototype.forEach.call(g.children, function (x) { x.setAttribute('aria-pressed', x === b); });
+      if (after) after(); else schedule(false);
+    };
+  });
+}
+
+function toggle(id, key, after) {
+  var b = $(id);
+  b.onclick = function () {
+    S[key] = !S[key];
+    b.setAttribute('aria-pressed', String(S[key]));
+    if (after) after(); else draw();
+  };
+}
+
+function viewBtns() {
+  var m = {'v-all': 'all', 'v-body': 'body', 'v-tray': 'tray'};
+  Object.keys(m).forEach(function (id) {
+    $(id).onclick = function () {
+      S.view = m[id];
+      Object.keys(m).forEach(function (j) { $(j).setAttribute('aria-pressed', String(j === id)); });
+      draw();
+    };
+  });
+  toggle('v-bowl', 'showBowl');
+  toggle('v-water', 'showWater');
+}
+
+/* World-space ray through a canvas point, matching what draw() rendered. */
+function camRay(cv, clientX, clientY) {
+  var rc = cv.getBoundingClientRect();
+  if (!rc.width || !rc.height) return null;
+  var asp = cv.width / cv.height;
+  var nx = (clientX - rc.left) / rc.width * 2 - 1;
+  var ny = 1 - (clientY - rc.top) / rc.height * 2;
+  var b = camBasis(effDist(asp)), t = Math.tan(FOV / 2), d = [], i;
+  for (i = 0; i < 3; i++) d[i] = -b.z[i] + b.x[i] * nx * t * asp + b.y[i] * ny * t;
+  var L = Math.hypot(d[0], d[1], d[2]) || 1;
+  return {o: b.e, d: [d[0] / L, d[1] / L, d[2] / L]};
+}
+
+/* The top face is one flat plane, so placing the logo is a ray/plane hit —
+   no mesh picking needed. Returns the polar position on that face. */
+function pickTop(cv, clientX, clientY) {
+  if (!P || !gl) return null;
+  var r = camRay(cv, clientX, clientY);
+  if (!r || Math.abs(r.d[2]) < 1e-6) return null;
+  var t = (P.pedTopZ + P.bodyH - r.o[2]) / r.d[2];
+  if (t <= 0) return null;
+  var wx = r.o[0] + r.d[0] * t, wy = r.o[1] + r.d[1] * t;
+  return {th: Math.atan2(wy, wx), r: Math.hypot(wx, wy)};
+}
+
+/* Is a point on the top face inside this footprint? Slack of 2 mm makes
+   small artwork practical to grab. */
+function overFoot(f, hit) {
+  if (!f || !hit) return false;
+  var SL = 2;
+  if (f.kind === 'flat') {
+    var x = hit.r * Math.cos(hit.th) - f.cx, y = hit.r * Math.sin(hit.th) - f.cy;
+    var u = x * -Math.sin(f.rot) + y * Math.cos(f.rot);
+    var v = x * Math.cos(f.rot) + y * Math.sin(f.rot);
+    return Math.abs(u) <= f.w / 2 + SL && Math.abs(v) <= f.h / 2 + SL;
+  }
+  return Math.abs(wrapPi(hit.th - f.thetaC) * f.bandR) <= f.ar / 2 + SL &&
+         Math.abs(hit.r - f.bandR) <= f.bw / 2 + SL;
+}
+
+/* Which piece of artwork is under the cursor. The logo wins a tie: it is the
+   thing users place deliberately, and the name has a home position. */
+function pickItem(hit) {
+  if (!hit) return null;
+  if (S.dOn && overFoot(decalFoot, hit)) return 'decal';
+  if (S.pname.trim() && overFoot(nameFoot, hit)) return 'name';
+  return null;
+}
+
+function orbit(cv) {
+  var down = false, lx = 0, ly = 0, pts = {}, dragging = null;
+  cv.addEventListener('pointerdown', function (e) {
+    cv.setPointerCapture(e.pointerId); pts[e.pointerId] = [e.clientX, e.clientY];
+    down = true; lx = e.clientX; ly = e.clientY;
+    dragging = pickItem(pickTop(cv, e.clientX, e.clientY));
+    cv.classList.toggle('grabbing', !!dragging);
+  });
+  cv.addEventListener('pointermove', function (e) {
+    if (!down) { cv.classList.toggle('on-decal', !!pickItem(pickTop(cv, e.clientX, e.clientY))); return; }
+    var ids = Object.keys(pts);
+    pts[e.pointerId] = [e.clientX, e.clientY];
+    if (ids.length >= 2) {
+      var a = pts[ids[0]], b = pts[ids[1]];
+      var d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (orbit.pd) { cam.zoom = Math.max(0.45, Math.min(2.6, cam.zoom * orbit.pd / d)); cam.dist = cam.base * cam.zoom; }
+      orbit.pd = d; draw(); return;
+    }
+    if (dragging) {
+      var hit = pickTop(cv, e.clientX, e.clientY);
+      if (hit) {
+        if (dragging === 'name') { S.nTheta = hit.th; S.nR = hit.r; }
+        else { S.dTheta = hit.th; S.dR = hit.r; }
+        refreshArt();
+      }
+      lx = e.clientX; ly = e.clientY; return;
+    }
+    cam.yaw -= (e.clientX - lx) * 0.008;
+    cam.pitch = Math.max(-0.2, Math.min(1.45, cam.pitch + (e.clientY - ly) * 0.006));
+    lx = e.clientX; ly = e.clientY; draw();
+  });
+  function up(e) {
+    if (dragging) schedule(false);              // settle the stats after a drag
+    down = false; dragging = null;
+    cv.classList.remove('grabbing');
+    delete pts[e.pointerId]; orbit.pd = 0;
+  }
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    cam.zoom = Math.max(0.45, Math.min(2.6, cam.zoom * (1 + Math.sign(e.deltaY) * 0.1)));
+    cam.dist = cam.base * cam.zoom;
+    draw();
+  }, {passive: false});
+}
+
+/* ------------------------------------------------------------------ save */
+var dl = null;
+var standalone = !(window.claude && window.claude.use);
+if (standalone) {
+  // running as a local file: hand the browser a normal download instead
+  dl = {save: function (req) {
+    var url = URL.createObjectURL(req.data instanceof Blob ? req.data : new Blob([req.data]));
+    var a = document.createElement('a');
+    a.href = url; a.download = req.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    return Promise.resolve({status: 'saved'});
+  }};
+} else {
+  window.claude.use('downloads').then(function (d) {
+    dl = d;
+    if (!d) { $('save').disabled = true; $('save-t').textContent = STR[lang].dlNo; }
+  });
+}
+
+function notes() {
+  var L = [];
+  L.push('PET BOWL MASTER — ' + (S.pname.trim() || 'unnamed') + '');
+  L.push('generated ' + new Date().toISOString().slice(0, 10));
+  L.push('');
+  L.push('FITS A STAINLESS BOWL');
+  L.push('  rim diameter      ' + S.bowlD + ' mm (outside of the rim)');
+  L.push('  depth             ' + S.bowlDepth + ' mm');
+  L.push('');
+  L.push('PARTS');
+  L.push('  body.stl   Part A — holder    ' + Math.round(S.holderW) + ' x ' + Math.round(S.holderW) + ' x ' + Math.round(P.bodyH) + ' mm');
+  L.push('  tray.stl   Part B — moat tray ' + Math.round(P.trayOutA * 2) + ' x ' + Math.round(P.trayOutA * 2) + ' x ' + Math.round(P.lipTopZ) + ' mm');
+  if (anyInlay())
+    L.push('  inlay.stl  second-colour artwork for Part A — see FLAT INLAY');
+  L.push('  bowl rim sits ' + S.rimHeight + ' mm above the floor');
+  L.push('  tray height ' + S.trayH + ' mm, trough ' + (S.trayH - 2.6).toFixed(1) + ' mm deep');
+  L.push('');
+  L.push('ANT MOAT');
+  L.push('  air gap           ' + S.moatGap.toFixed(1) + ' mm from the tray rim to any part of the holder.');
+  L.push('  Ants cannot jump, so that gap is the barrier. It only works while');
+  L.push('  the trough holds water — check it weekly in dry season.');
+  L.push('  Lift Part A straight off to fill and clean.');
+  L.push('');
+  L.push('PRINTING — no supports on either part');
+  L.push('  Part A   INVERTED, top face on the bed. Walls then lean inward,');
+  L.push('           the seat chamfer is 45 deg, the handle arches self-bridge.');
+  L.push('           0.2 mm layers, 4 walls, 12-15 % infill.');
+  L.push('  Part B   as exported, floor down.');
+  L.push('           0.2 mm layers, 4 walls, 12 bottom layers so the trough');
+  L.push('           floor is watertight, 15 % infill, 5 mm brim.');
+  L.push('');
+  L.push('  Material PETG or ASA for Part B — it holds standing water and PLA');
+  L.push('           creeps over months. Part A can be PLA indoors.');
+  L.push('           Print the two in contrasting colours.');
+  if (combined()) {
+    var cart = comboRaster(), ck = nameFoot ? nameFoot.sizeMM / cart.heightMM : 1;
+    L.push('  Badge    ' + styleWord(S.nstyle) + depthWord() +
+           ' — the name and the logo share ONE plaque,');
+    L.push('           ' + (S.nLayout === 'flat' ? 'laid flat' : 'wrapped round the rim') +
+           ', logo ' + posWord(S.dPos) + ' the name, from ' + (decalFile || 'an SVG') + '.');
+    L.push('           Asked for ' + S.nameSize.toFixed(1) + ' mm text / ' + S.dSize.toFixed(1) +
+           ' mm logo; lands at ' + (S.nameSize * ck).toFixed(1) + ' / ' +
+           (S.dSize * ck).toFixed(1) + ' mm after fitting the rim.');
+    if (S.nstyle === 'inlay')
+      L.push('           Second colour comes from inlay.stl — see FLAT INLAY below.');
+    else
+      L.push('           One filament change at that layer colours the whole badge.');
+    if (decalThin > 0.01)
+      L.push('           ' + Math.round(decalThin * 100) + ' % of the logo is finer than 0.8 mm and may not print.');
+    L.push('           The badge ships as separate closed solids sitting in the rim.');
+    L.push('           Every one is watertight; your slicer unions them on load.');
+    L.push('           If it offers to "repair", you can say no.');
+  } else if (S.pname.trim() && lastName) {
+    L.push('  Name     ' + styleWord(S.nstyle) + depthWord() + '.');
+    if (S.nstyle === 'inlay') {
+      L.push('           Second colour comes from inlay.stl — see FLAT INLAY below.');
+    } else {
+      L.push('           A filament colour change at that layer gives two-tone');
+      L.push('           lettering.');
+    }
+    L.push('           The lettering ships as separate closed solids sitting in the');
+    L.push('           rim, so body.stl holds the holder plus one solid per letter');
+    L.push('           stroke. Every one is watertight; your slicer unions them on');
+    L.push('           load. If it offers to "repair", you can say no.');
+  }
+  if (S.dOn && lastDecal && !combined()) {
+    L.push('  Logo     ' + styleWord(S.dStyle) + depthWord() + ', ' + S.dSize.toFixed(1) + ' mm tall, ' +
+           (S.dLayout === 'flat' ? 'laid flat' : 'wrapped round the rim') + ', from');
+    L.push('           ' + (decalFile || 'an SVG') + '. Same relief height as the name.');
+    if (S.dStyle === 'inlay')
+      L.push('           Second colour comes from inlay.stl — see FLAT INLAY below.');
+    else if (S.nstyle !== 'inlay')
+      L.push('           One filament change colours it and the name together.');
+    if (decalThin > 0.01)
+      L.push('           ' + Math.round(decalThin * 100) + ' % of it is finer than 0.8 mm and may not print.');
+  }
+  if (anyInlay()) {
+    L.push('');
+    L.push('FLAT INLAY');
+    L.push('  The artwork is level with the plaque around it — no bump to catch');
+    L.push('  dirt, and the colour edge is the artwork outline itself.');
+    if (S.emboss < 0.05) {
+      L.push('');
+      L.push('  Relief depth is 0, so the plaque is level with the RIM as well —');
+      L.push('  the whole badge is flush and the rim stays one smooth surface.');
+      L.push('  Nothing stands proud at all; the marking is purely a colour');
+      L.push('  change. The solids are still 0.6 mm thick, they just sit down');
+      L.push('  inside the rim instead of on top of it, which is enough depth');
+      L.push('  for the second filament to cover cleanly.');
+    }
+    L.push('');
+    L.push('  That needs TWO filaments in one layer, so it cannot be done with a');
+    L.push('  plain colour change at a layer — a change recolours the whole');
+    L.push('  layer. inlay.stl is a separate part instead:');
+    L.push('');
+    L.push('    1. Load body.stl.');
+    L.push('    2. Right-click it and add inlay.stl as a PART of that object');
+    L.push('       (PrusaSlicer: Add part > Load; Bambu/Orca: Add part > Load).');
+    L.push('       It lands in the right place — both files share one origin,');
+    L.push('       so do NOT re-centre or move it.');
+    L.push('    3. Assign the part your second filament.');
+    L.push('');
+    L.push('  The two never overlap: the plaque in body.stl is exactly the');
+    L.push('  complement of the artwork, so they tile the same patch of rim');
+    L.push('  with no gap and no double-extrusion. Tops land at one height.');
+    L.push('');
+    L.push('  Single extruder, no MMU/AMS? Print inlay.stl on its own in the');
+    L.push('  second colour and glue it into the recess — same fit.');
+  }
+  L.push('');
+  L.push('  All food and water stays in the stainless insert. Printed plastic');
+  L.push('  never touches what the animal eats.');
+  L.push('');
+  L.push('SETTINGS USED');
+  ['bowlD', 'bowlDepth', 'holderW', 'rimHeight', 'wall', 'nSuper', 'moatGap', 'trayH',
+   'handles', 'handleLen', 'handleH', 'pname', 'nfont', 'nstyle', 'nameSize', 'emboss',
+   'nLayout', 'nRot', 'dOn', 'dCombine', 'dPos', 'dLayout', 'dStyle', 'dSize', 'dRot'
+  ].forEach(function (k) { L.push('  ' + (k + '                ').slice(0, 14) + ' ' + S[k]); });
+  L.push('  ' + ('nPos            ').slice(0, 14) + ' ' + Math.round(S.nTheta * 180 / Math.PI) +
+         ' deg, r ' + (S.nR === null ? 'auto' : S.nR.toFixed(1)));
+  if (S.dOn && !combined())
+    L.push('  ' + ('dPosAt          ').slice(0, 14) + ' ' + Math.round(S.dTheta * 180 / Math.PI) +
+           ' deg, r ' + (S.dR === null ? 'auto' : S.dR.toFixed(1)));
+  if (S.dOn) L.push('  ' + ('dFile           ').slice(0, 14) + ' ' + (decalFile || '(unnamed)'));
+  return L.join('\n');
+}
+
+/* At a depth of 0 the artwork is level with the rim, so "0.0 mm deep" reads
+   like a mistake. Say what it actually is. */
+function depthWord() {
+  return S.emboss < 0.05 ? 'flush with the top rim — level, no bump'
+                         : S.emboss.toFixed(1) + ' mm on the top rim';
+}
+
+function styleWord(v) {
+  return v === 'raised' ? 'raised ' : v === 'inlay' ? 'flat-inlaid ' : 'recessed ';
+}
+
+function posWord(v) {
+  return v === 'left' ? 'left of' : v === 'right' ? 'right of' : v === 'above' ? 'above' : 'below';
+}
+
+function anyInlay() {
+  /* Combined, the badge's relief is the NAME's; a stale S.dStyle must not make
+     the notes promise an inlay.stl that the zip does not contain. */
+  if (combined()) return S.nstyle === 'inlay';
+  return (S.nstyle === 'inlay' && S.pname.trim() && lastName) ||
+         (S.dStyle === 'inlay' && S.dOn && lastDecal);
+}
+
+function slug(s) {
+  return (s || 'pet').trim().replace(/\s+/g, '-').replace(/[^\w฀-๿-]/g, '').slice(0, 24) || 'pet';
+}
+
+$('save').onclick = function () {
+  if (!dl) return;
+  var btn = $('save'), old = $('save-t').textContent;
+  btn.disabled = true; $('save-t').textContent = T.saving;
+  setTimeout(function () {
+    try {
+      var r = build(640);
+      var bodyMeshes = [r.body], inlayMeshes = [];
+      [r.name, r.decal].forEach(function (a) {
+        if (!a) return;
+        bodyMeshes.push(a.m);
+        if (a.inlay) inlayMeshes.push(a.inlay);
+      });
+      var files = [
+        {name: 'body.stl', data: new Uint8Array(G.toSTL(bodyMeshes))},
+        {name: 'tray.stl', data: new Uint8Array(G.toSTL([r.tray]))},
+        {name: 'print-notes.txt', data: new TextEncoder().encode(notes())}
+      ];
+      /* The inlay is a separate FILE, not another solid in body.stl. Anything
+         inside body.stl gets unioned into one colour on load, which is exactly
+         what the inlay must not be. */
+      if (inlayMeshes.length)
+        files.splice(1, 0, {name: 'inlay.stl', data: new Uint8Array(G.toSTL(inlayMeshes))});
+      var blob = zip(files);
+      dl.save({filename: 'pet-bowl-master-' + slug(S.pname) + '.zip', data: blob})
+        .then(function () { flash(T.dlOk, 'ok'); })
+        .catch(function (e) { if (e && e.code !== 'declined') flash(T.dlFail + (e.message || e.code), 'crit'); })
+        .then(function () { btn.disabled = false; $('save-t').textContent = old; });
+    } catch (err) {
+      flash(T.dlFail + err.message, 'crit');
+      btn.disabled = false; $('save-t').textContent = old;
+    }
+  }, 30);
+};
+
+function flash(msg, kind) {
+  var d = document.createElement('div');
+  d.className = 'alert ' + (kind === 'crit' ? 'crit' : '');
+  d.innerHTML = '<span>' + msg + '</span>';
+  $('alerts').prepend(d);
+  setTimeout(function () { d.remove(); }, 6000);
+}
+
+/* ------------------------------------------------------------------ boot */
+function boot() {
+  var cv = $('gl');
+  try { initGL(cv); } catch (e) { gl = null; }
+  if (!gl) $('spin').textContent = 'This browser has no WebGL2 — the 3D preview is off, downloads still work.';
+  applyLang();
+  orbit(cv);
+  viewBtns();
+  ['bowlD', 'bowlDepth', 'holderW', 'rimHeight', 'wall', 'nSuper', 'moatGap', 'trayH', 'handleLen', 'handleH',
+   'nameSize', 'emboss'].forEach(function (k) { slider(k, k); });
+  $('handles').checked = S.handles;
+  $('handles').onchange = function () { S.handles = $('handles').checked; schedule(false); };
+  $('bed').value = S.bed;
+  $('bed').onchange = function () { S.bed = +$('bed').value; refresh(true); };
+  $('pname').value = S.pname;
+  $('pname').addEventListener('input', function () {
+    S.pname = $('pname').value;
+    rebuildName();
+  });
+  pillGroup('nfont', 'nfont', rebuildName);
+  pillGroup('nstyle', 'nstyle', function () { schedule(false); });
+  pillGroup('nlayout', 'nLayout', function () { syncLayoutUI(); schedule(false); });
+  $('nRot').value = S.nRot;
+  $('nRot').addEventListener('input', function () {
+    S.nRot = +$('nRot').value; syncOutputs(); refreshArt();
+  });
+  $('nRot').addEventListener('change', function () { schedule(false); });
+  wireDecal(cv);
+  syncLayoutUI();
+  $('lang-en').onclick = function () { setLang('en'); };
+  $('lang-th').onclick = function () { setLang('th'); };
+  new ResizeObserver(draw).observe(cv);
+  matchMedia('(prefers-color-scheme:dark)').addEventListener('change', function () { colCache = {}; draw(); });
+  rebuildName();
+}
+
+function setLang(l) {
+  lang = l;
+  $('lang-en').setAttribute('aria-pressed', String(l === 'en'));
+  $('lang-th').setAttribute('aria-pressed', String(l === 'th'));
+  applyLang();
+  schedule(false);
+}
+
+function rebuildName() {
+  var txt = S.pname.trim();
+  /* Emptying or filling the name flips willCombine(), which changes what the
+     logo should have baked into it — with combine on and layout curved, typing
+     the first letter has to un-bake a rotation the standalone logo was carrying. */
+  if (!txt) { lastName = null; syncDecalUI(); syncDecalRaster(); return; }
+  var fam = S.nfont;
+  var go = function () {
+    lastName = rasterName(txt, fam, 56);
+    syncDecalUI();
+    syncDecalRaster();
+  };
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load('600 220px "' + fam + '"', txt).then(go, go);
+  } else go();
+}
+
+function syncLayoutUI() {
+  $('nctl').hidden = S.nLayout !== 'flat';   // rotation is meaningless when curved
+}
+
+function syncDecalUI() {
+  var has = !!(S.dOn && lastDecal), comb = combined();
+  $('dhas').hidden = !has;
+  $('dctl').hidden = !has;
+  /* Effective state, not S.dCombine: clearing the name un-combines the logo, so
+     its own controls must come back rather than stranding it with everything
+     that governs it hidden. */
+  $('dpos-f').hidden = !comb;
+  $('dsolo').hidden = comb;
+  $('dname').textContent = decalFile || '';
+}
+
+function clearDecal() {
+  decalSrc = null; decalFile = ''; lastDecal = null; S.dOn = false;
+  S.dTheta = 0; S.dR = null;
+  decalSay(null);
+  syncDecalUI();
+}
+
+/* paintStats rewrites #alerts on every rebuild, so a flash() would vanish a
+   frame later. Anything about the logo belongs in the alert list instead. */
+function decalSay(msg) {
+  decalNote = msg || null;
+  schedule(false);
+}
+
+function loadSVGFile(file) {
+  if (!file) return;
+  if (!/svg/i.test(file.type || '') && !/\.svg$/i.test(file.name || '')) {
+    decalSay('That is not an SVG file.'); return;
+  }
+  if (file.size > 2e6) { decalSay('That SVG is over 2 MB — simplify it before importing.'); return; }
+  file.text().then(function (txt) {
+    decalSrc = txt; decalFile = file.name || 'logo.svg';
+    return rebuildDecal();
+  }).catch(function (e) { decalError(e); });
+}
+
+function decalError(e) {
+  decalSrc = null; lastDecal = null; S.dOn = false; syncDecalUI();
+  decalSay(e && e.message === 'tainted'
+    ? 'That SVG pulls in an external image, so the browser will not let the app read the pixels. Export it as plain paths with the artwork embedded.'
+    : 'Could not read that SVG.');
+}
+
+/* Curved standalone bakes the logo's rotation into the pixels, because
+   curvedPlace has no rotation parameter. Inside a badge the whole plaque is
+   bent or rotated as one and S.dRot is hidden, so bake nothing. */
+function bakeRot() { return (willCombine() || S.dLayout === 'flat') ? 0 : S.dRot; }
+
+/* Re-rasterise only when the baked angle would actually change. Everything that
+   can move bakeRot() routes through here so no caller has to reason about it. */
+function syncDecalRaster() {
+  if (decalSrc && decalBakedRot !== bakeRot()) return rebuildDecal();
+  schedule(false);
+  return Promise.resolve();
+}
+
+function rebuildDecal() {
+  if (!decalSrc) { lastDecal = null; S.dOn = false; syncDecalUI(); decalSay(null); return Promise.resolve(); }
+  var rot = bakeRot();
+  decalBakedRot = rot;
+  return rasterSVG(decalSrc, 72, rot).then(function (r) {
+    lastDecal = r;
+    S.dOn = !!r;
+    syncDecalUI();
+    decalSay(r ? null : 'That SVG came out empty — nothing in it is filled, so there is nothing to emboss.');
+  }, decalError);
+}
+
+function wireDecal(cv) {
+  var dz = $('ddrop'), fi = $('dfile');
+  dz.onclick = function () { fi.click(); };
+  dz.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fi.click(); } };
+  fi.addEventListener('change', function () { loadSVGFile(fi.files && fi.files[0]); fi.value = ''; });
+  $('dclear').onclick = clearDecal;
+
+  var drop = function (e) {
+    e.preventDefault(); dz.classList.remove('over');
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadSVGFile(f);
+  };
+  [dz, cv].forEach(function (el) {
+    el.addEventListener('dragover', function (e) { e.preventDefault(); dz.classList.add('over'); });
+    el.addEventListener('dragleave', function () { dz.classList.remove('over'); });
+    el.addEventListener('drop', drop);
+  });
+  // a file dropped anywhere else would navigate away from the app
+  window.addEventListener('dragover', function (e) { e.preventDefault(); });
+  window.addEventListener('drop', function (e) { e.preventDefault(); });
+
+  $('dCombine').checked = S.dCombine;
+  $('dCombine').onchange = function () {
+    S.dCombine = $('dCombine').checked;
+    syncDecalUI();
+    syncDecalRaster();         // un-bakes dRot when joining a badge, re-bakes on leaving
+  };
+  pillGroup('dpos', 'dPos', function () { schedule(false); });
+  pillGroup('dstyle', 'dStyle', function () { schedule(false); });
+  pillGroup('dlayout', 'dLayout', function () {
+    syncLayoutUI();
+    syncDecalRaster();         // rotation is baked into the raster only when curved
+  });
+  slider('dSize', 'dSize');
+  /* Flat mode rotates the placement, so it can follow the slider live. Curved
+     mode has no rotation parameter, so it has to re-rasterise on release. */
+  $('dRot').value = S.dRot;
+  $('dRot').addEventListener('input', function () {
+    S.dRot = +$('dRot').value; syncOutputs();
+    if (S.dLayout === 'flat') refreshArt();
+  });
+  $('dRot').addEventListener('change', function () {
+    if (S.dLayout === 'flat') schedule(false); else syncDecalRaster();
+  });
+  syncDecalUI();
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+})();
+
+</script>
+</body>
+</html>
